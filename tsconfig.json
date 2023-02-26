@@ -1,0 +1,31 @@
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "strict": true,
+    "rootDir": ".",
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "allowJs": false,
+    "target": "esnext",
+    "module": "esnext",
+    "noImplicitAny": false,
+    "noUnusedLocals": true,
+    "experimentalDecorators": true,
+    "removeComments": false,
+    "resolveJsonModule": true,
+    "preserveConstEnums": true,
+    "sourceMap": true,
+    "downlevelIteration": true,
+    "lib": ["esnext", "DOM"],
+    "types": ["vitest/globals"],
+    "paths": {
+      "@mini-vue/*": ["packages/*/src"],
+      "mini-vue": ["packages/vue/src"]
+    }
+  },
+  // "include": ["packages/*/src", "packages/*/__tests__"],
+  // "exclude": [
+  //   "node_modules",
+  //   "packages/react/example/*"
+  // ]
+}
