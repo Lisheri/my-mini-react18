@@ -4,9 +4,10 @@
 	"description": "",
 	"main": "index.js",
 	"scripts": {
-		"lint": "eslint packages --ext .ts,.jsx,.tsx,.js --fix --quiet",
+		"eslint": "eslint packages --ext .ts,.jsx,.tsx,.js --fix --quiet",
 		"prettier": "prettier --write .",
-		"prepare": "husky install"
+		"prepare": "husky install",
+    "lint": "lint-staged"
 	},
 	"keywords": [],
 	"author": "",
