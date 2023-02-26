@@ -1,0 +1,5 @@
+node_modules
+dist
+lib
+__snapshots__
+.pnpm-debug.log
