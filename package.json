@@ -35,7 +35,7 @@
 		"vitest": "^0.29.1"
 	},
 	"lint-staged": {
-		"miniprogram/**/*.{js,jsx,ts,tsx,vue}": [
+		"packages/**/*.{js,jsx,ts,tsx,vue}": [
 			"prettier --write",
 			"eslint packages --ext .ts,.jsx,.tsx,.js --fix --quiet",
 			"git add"
