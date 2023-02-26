@@ -19,13 +19,13 @@
     "lib": ["esnext", "DOM"],
     "types": ["vitest/globals"],
     "paths": {
-      "@mini-vue/*": ["packages/*/src"],
-      "mini-vue": ["packages/vue/src"]
+      "@mini-react/*": ["packages/*/src"],
+      "mini-react": ["packages/react/src"]
     }
   },
-  // "include": ["packages/*/src", "packages/*/__tests__"],
-  // "exclude": [
-  //   "node_modules",
-  //   "packages/react/example/*"
-  // ]
+  "include": ["packages/*/src", "packages/*/__tests__"],
+  "exclude": [
+    "node_modules",
+    "packages/react/example/*"
+  ]
 }

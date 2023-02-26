@@ -1,0 +1,12 @@
+{
+  "name": "@mini-react/shared",
+  "module": "index.ts",
+  "version": "1.0.0",
+  "description": "shared 所有公用辅助方法及类型定义",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}

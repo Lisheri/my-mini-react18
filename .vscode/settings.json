@@ -1,0 +1,14 @@
+{
+  "editor.tabSize": 2,
+  "vetur.format.defaultFormatterOptions": {
+      "prettyhtml": {
+          "printWidth": 80,
+          "singleQuote": true,
+          "semi": true,
+          "tabWidth": 2
+      }
+  },
+  "prettier.tabWidth": 2,
+  "editor.detectIndentation": false,
+  "vetur.format.options.tabSize": 2
+}
