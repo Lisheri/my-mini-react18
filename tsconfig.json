@@ -20,7 +20,8 @@
     "types": ["vitest/globals"],
     "paths": {
       "@mini-react/*": ["packages/*/src"],
-      "mini-react": ["packages/react/src"]
+      "mini-react": ["packages/react/src"],
+      "hostConfig": ["packages/react-reconciler/src/hostConfig"]
     }
   },
   "include": ["packages/*/src", "packages/*/__tests__"],

@@ -5,12 +5,12 @@ import {
 } from '@mini-react/shared';
 import type { Type, Key, Ref, Props, ReactElement } from '@mini-react/shared';
 
-const RESERVED_PROPS = {
-	key: true,
-	ref: true,
-	__self: true,
-	__source: true
-};
+// const RESERVED_PROPS = {
+// 	key: true,
+// 	ref: true,
+// 	__self: true,
+// 	__source: true
+// };
 
 // jsx 或者 createElement 执行的返回结果, 都是 ReactElement
 /**
@@ -40,6 +40,14 @@ const ReactElement = function (
 
 // 后续所有参数都当做 children 处理
 // jsx的核心主要是前置处理参数差异, 用于创建一个 ReactElement
+// jsx方法返回的结果是一个 ReactElement 结构
+/**
+ *
+ * @param type 节点的类型
+ * @param config 配置项, key和ref这两个prop需要单独处理
+ * @param mayBeChildren 儿子节点
+ * @returns
+ */
 export const jsx = (
 	type: ElementType,
 	config: any,
@@ -64,7 +72,7 @@ export const jsx = (
 			}
 			continue;
 		}
-		// 这里需要滤除原型上的属性
+		// 这里需要滤除原型上的属性以及前面的key和ref
 		if (hasOwnProperty.call(config, prop)) {
 			// 赋值给props
 			props[prop] = val;
@@ -74,6 +82,7 @@ export const jsx = (
 	if (maybeChildrenLength) {
 		// 只有一个 child, 还有一种是有多个 [child, child, child]
 		if (maybeChildrenLength === 1) {
+			// 只有一个child, 直接解开数组就行了
 			props.children = mayBeChildren[0];
 		} else {
 			// children 本身
@@ -87,7 +96,7 @@ export const jsx = (
 // 这里生成和开发都用这个
 // ? 当然, 实际上并不是这样的, 因为在React中, 开发环境的jsx会做更多的检查
 // ? 当前版本的react, 哪怕是开发环境 children 也没有放到 props中
-export const jsxDEV = (type: ElementType, config: any, ...mayBeChildren: any[]): ReactElement => {
+export const jsxDEV = (type: ElementType, config: any): ReactElement => {
 	// config 中有 key 和 ref需要单独处理
 	let key: Key = null;
 	const props: Props = {};
@@ -107,26 +116,23 @@ export const jsxDEV = (type: ElementType, config: any, ...mayBeChildren: any[]):
 			}
 			continue;
 		}
-		// 这里需要滤除原型上的属性
-		if (
-			hasOwnProperty.call(config, prop) &&
-			!RESERVED_PROPS.hasOwnProperty(prop)
-		) {
+		// 这里需要滤除原型上的属性以及前面的key和ref
+		if (hasOwnProperty.call(config, prop)) {
 			// 赋值给props
 			props[prop] = val;
 		}
 	}
-
-  const maybeChildrenLength = mayBeChildren.length;
-	if (maybeChildrenLength) {
-		// 只有一个 child, 还有一种是有多个 [child, child, child]
-		if (maybeChildrenLength === 1) {
-			props.children = mayBeChildren[0];
-		} else {
-			// children 本身
-			props.children = mayBeChildren;
-		}
-	}
+	// const maybeChildrenLength = mayBeChildren.length;
+	// if (maybeChildrenLength) {
+	// 	// 只有一个 child, 还有一种是有多个 [child, child, child]
+	// 	if (maybeChildrenLength === 1) {
+	//     // 只有一个child, 直接解开数组就行了
+	// 		props.children = mayBeChildren[0];
+	// 	} else {
+	// 		// children 本身
+	// 		props.children = mayBeChildren;
+	// 	}
+	// }
 
 	return ReactElement(type, key, ref, props);
 };

@@ -3,6 +3,8 @@ import fs from 'fs';
 
 import ts from 'rollup-plugin-typescript2';
 import cjs from '@rollup/plugin-commonjs';
+import replace from '@rollup/plugin-replace';
+
 
 // 所有包的路径, 其实就是 packages
 const pkgPath = path.resolve(__dirname, '../../packages');
@@ -10,7 +12,7 @@ const pkgPath = path.resolve(__dirname, '../../packages');
 const distPath = path.resolve(__dirname, '../../dist/node_modules');
 
 export const resolvePkgPath = (pkgName, isDist = false) => {
-  // 首先判断是否为 产物路径
+  // 首先判断是否为 dist路径
   if (isDist) {
     // 返回 构建文件下的对应包名即可
     return `${distPath}/${pkgName}`;
@@ -18,7 +20,7 @@ export const resolvePkgPath = (pkgName, isDist = false) => {
   return `${pkgPath}/${pkgName}`;
 };
 
-// 获取对应的 package 的配置
+// 获取对应的 package.json 的配置
 export const getPackageJSON = (pkgName) => {
   // 获取包对应的package.json文件
   const path = `${resolvePkgPath(pkgName)}/package.json`;
@@ -31,7 +33,13 @@ export const getPackageJSON = (pkgName) => {
 // 获取所有基础的 plugins
 // ? 暂时需要两个, 一个是解析commonjs规范, 一个用于转译ts
 export const getBaseRollupPlugins = ({
+  // 插入环境标识
+  alias = {
+    __DEV__: true
+  },
   typescript = {}
 } = {}) => {
-  return [cjs(), ts(typescript)]
+  // 返回基本的 plugins
+  // 先执行 commonjs的, 在执行ts的
+  return [replace({ alias }), cjs(), ts(typescript)]
 }

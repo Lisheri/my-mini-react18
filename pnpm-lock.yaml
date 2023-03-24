@@ -48,6 +48,15 @@ importers:
     dependencies:
       '@mini-react/shared': link:../shared
 
+  packages/react-reconciler:
+    specifiers:
+      '@mini-react/shared': workspace:^1.0.0
+      '@rollup/plugin-replace': ^5.0.2
+    dependencies:
+      '@mini-react/shared': link:../shared
+    devDependencies:
+      '@rollup/plugin-replace': 5.0.2_rollup@3.17.3
+
 packages:
 
   /@babel/code-frame/7.18.6:
@@ -532,6 +541,20 @@ packages:
       estree-walker: 2.0.2
       glob: 8.1.0
       is-reference: 1.2.1
+      magic-string: 0.27.0
+      rollup: 3.17.3
+    dev: true
+
+  /@rollup/plugin-replace/5.0.2_rollup@3.17.3:
+    resolution: {integrity: sha512-M9YXNekv/C/iHHK+cvORzfRYfPbq0RDD8r0G+bMiTXjNGKulPnCT9O3Ss46WfhI6ZOCgApOP7xAdmCQJ+U2LAA==}
+    engines: {node: '>=14.0.0'}
+    peerDependencies:
+      rollup: ^1.20.0||^2.0.0||^3.0.0
+    peerDependenciesMeta:
+      rollup:
+        optional: true
+    dependencies:
+      '@rollup/pluginutils': 5.0.2_rollup@3.17.3
       magic-string: 0.27.0
       rollup: 3.17.3
     dev: true
