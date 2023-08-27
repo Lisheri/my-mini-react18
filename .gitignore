@@ -3,3 +3,4 @@ dist
 lib
 __snapshots__
 .pnpm-debug.log
+.DS_Store

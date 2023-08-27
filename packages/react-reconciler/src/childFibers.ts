@@ -10,11 +10,11 @@ import { HostText } from './workTags';
  *  ? 这个策略本质上是针对mount流程的, 只有在mount流程时, 才会存在插入大量的DOM节点, 而在update流程时, 只存在更新局部的节点
  * @return reconcileChildFibers 处理儿子fiber
  */
-function ChildReconciler(shouldTrackEffects: boolean) {
+function createChildReconciler(shouldTrackEffects: boolean) {
 	// 这里在外层函数处理参数差异, 在生成一个新的函数
 	// + 按理来说不标记副作用以后, 是不会生成 Placement 标记的, 但实际上我们希望的是对根节点执行一次 Placement
 	// + 但实际上在初始化的过程中, 也就是在 workLoop -> renderRoot -> prepareRefreshStack 时
-	// + 会创建一个 workInProgress, 也就是 root.current, 也就是 hostRootFiber
+	// + 会创建第一个 workInProgress, 也是 root.current, 也就是 hostRootFiber
 	// + 意味着, 在更新过程中, 有一个节点同时存在 current 以及 workInProgress, 也就是挂载的根节点对应的fiber, 也就是 hostRootFiber
 	// + 那么对应到这里的逻辑, 对于首屏渲染, 挂载的组件树(<App/>)所有fiber都会走到 mount 的逻辑中
 	// + 对于 hostRootFiber, 就会走到 update 逻辑中, 他会被插入一个 Placement Flag, 通过这个 Placement Flag, 最终会执行一次 dom 插入操作
@@ -24,14 +24,14 @@ function ChildReconciler(shouldTrackEffects: boolean) {
 		returnFiber: FiberNode,
 		currentFiber: FiberNode | null,
 		element: ReactElement
-	) {
+	): FiberNode {
 		// TODO 核心在于根据 ReactElement创建一个Fiber, 然后返回
 
 		// 1. 创建fiber
 		const fiber = createFiberFromElement(element);
 		// 2. 将创建出的fiber的爹指向入参指定的爹
 		fiber.return = returnFiber;
-		// 3. 返回这个fiber
+		// 3. 返回这个fiber(reconcileChildFibers执行完成后, 会将这里返回的fiber挂到returnFiber.child上, 这里不需要进行处理)
 		return fiber;
 	}
 
@@ -40,7 +40,7 @@ function ChildReconciler(shouldTrackEffects: boolean) {
 		currentFiber: FiberNode | null,
 		// 就是内部的文本
 		content: string | number
-	) {
+	): FiberNode {
 		// 与 reconcileSingleElement 类似
 		const fiber = new FiberNode(HostText, { content }, null);
 		fiber.return = returnFiber;
@@ -82,7 +82,7 @@ function ChildReconciler(shouldTrackEffects: boolean) {
 					return null;
 			}
 		}
-		// TODO 多节点情况: ul>li*3
+		// TODO 多节点情况: ul>li*3, 暂不处理
 		// hostText 文本节点情况
 		if (typeof newChild === 'string' || typeof newChild === 'number') {
 			// 文本节点
@@ -96,6 +96,6 @@ function ChildReconciler(shouldTrackEffects: boolean) {
 }
 
 // 追踪副作用(update阶段)
-export const reconcileChildFibers = ChildReconciler(true);
+export const reconcileChildFibers = createChildReconciler(true);
 // 不追踪副作用(mount阶段)
-export const mountChildFibers = ChildReconciler(false);
+export const mountChildFibers = createChildReconciler(false);

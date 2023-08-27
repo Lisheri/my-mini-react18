@@ -21,23 +21,27 @@ export class FiberNode {
 	// ? fiberNode的类型, 比如 FunctionComponent, 他的tag是0, type就是 函数组件 本身: (props) => JSX
 	public type: ((...args: any[]) => any) | null;
 	// * 指向父级fiberNode
+	// ? FiberNode是作为工作单元, 当前单元结束后, 下一个就是他爹作为新的工作单元, 因此叫return
 	public return: FiberNode | null;
-	// ? 右边的兄弟节点
+	// ? 右边的兄弟fiberNode
 	public sibling: FiberNode | null;
-	// ? 儿子
+	// ? 儿子fiberNode
 	public child: FiberNode | null;
 	// ? 同级fiberNode有多个, 用于标识同级节点序号. 比如 ul>li*3, 里面li的FiberNode.index依次为 0 1 2
 	public index: number;
 	// ? ref属性
 	public ref: Ref;
 	// ? 工作完成后最终确定的props
-	public memorizeProps: Props | null;
-	// ? 更新完成的心得状态
+	public memorizedProps: Props | null;
+	// ? 更新完成的新的状态
 	public memorizedState: any;
 	// ? 用于切换 current FiberNode 和 workInProgress FiberNode
 	public alternate: FiberNode | null;
 	// ? 副作用标记
 	public flags: Flags;
+	// ? 代表其子树中生成的flags, 在 completeWork中, 需要一层一层往上传递
+	// ? 到顶层插入时, 可以在顶层获取到所有子树的flags
+	public subTressFlags: Flags;
 
 	// ? 更新队列, 此时并不知道state是什么类型, 因此使用unknow
 	public updateQueue: unknown;
@@ -69,11 +73,13 @@ export class FiberNode {
 
 		// --------------------------- 作为工作单元 start ---------------------------
 		this.pendingProps = pendingProps;
-		this.memorizeProps = null;
+		this.memorizedProps = null;
 		// 在更新时, 会将 workInProgress 指向 current, 更新前将 current 指向 workInProgress
 		this.alternate = null;
 		// flags统称为 副作用标记
 		this.flags = NoFlags;
+		// 子树flags
+		this.subTressFlags = NoFlags;
 		// 更新队列
 		this.updateQueue = null;
 		this.memorizedState = null;
@@ -89,7 +95,7 @@ export class FiberRootNode {
 
 	// ? 指向 hostRootFiber, 也是一个 FiberNode
 	public current: FiberNode;
-	// ? 指向更新完成后的 hostRootFiber
+	// ? 指向更新完成后的 hostRootFiber(递归更新完成)
 	public finishedWork: FiberNode | null;
 
 	constructor(container: Container, hostRootFiber: FiberNode) {
@@ -103,6 +109,7 @@ export class FiberRootNode {
 
 // 由于React采用的是双缓冲机制
 // 因此, 这里要切换, 如果传入的是current, 那么返回的是 workInProgress. 而接收的是 workInProgress, 那么返回的是 current
+// 这里表示的就是双缓存机制中, 每次都获取和当前fiberNode相对应的另外一个fiberNode
 export const createWorkInProgress = (
 	current: FiberNode,
 	pendingProps: Props
@@ -124,12 +131,13 @@ export const createWorkInProgress = (
 		wip.pendingProps = pendingProps;
 		// 清除所有副作用相关, 因为他可能是上次更新遗留的
 		wip.flags = NoFlags;
+		wip.subTressFlags = NoFlags;
 	}
 	wip.type = current.type;
 	// 它使用 shared: {pending}, 主要利用浅拷贝, 让 current和wip都可以修改 pending内部内容
 	wip.updateQueue = current.updateQueue;
 	wip.child = current.child;
-	wip.memorizeProps = current.memorizeProps;
+	wip.memorizedProps = current.memorizedProps;
 	wip.memorizedState = current.memorizedState;
 	return wip;
 };

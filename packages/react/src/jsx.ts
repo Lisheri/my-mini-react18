@@ -45,7 +45,7 @@ const ReactElement = function (
  *
  * @param type 节点的类型
  * @param config 配置项, key和ref这两个prop需要单独处理
- * @param mayBeChildren 儿子节点
+ * @param mayBeChildren 儿子节点(可能不传, 所以命名为 mayBeChildren), babel静态编译的jsx方法, children实际上就在props中
  * @returns
  */
 export const jsx = (
@@ -57,6 +57,7 @@ export const jsx = (
 	let key: Key = null;
 	const props: Props = {};
 	let ref: Ref = null;
+	// 处理config上的属性, 均赋值给 props对象, 同时更新 key 和 ref
 	for (const prop in config) {
 		// 将所有的值赋值给 props对象
 		const val = config[prop];

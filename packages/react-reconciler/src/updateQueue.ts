@@ -61,7 +61,7 @@ export const processUpdateQueue = <State>(
 	// 如果pendingUpdate存在
 	if (pendingUpdate !== null) {
 		// baseUpdate: 1, update: 2 -> memorizedState: 2
-		// baseUpdate: 1, update: x => 2*x -> memorizedState: update(baseUpdate)
+		// baseUpdate: 1, update: x => 2 * x -> memorizedState: update(baseUpdate)
 		const action = pendingUpdate.action;
 		if (action instanceof Function) {
 			// action为函数, 对应第二种类型

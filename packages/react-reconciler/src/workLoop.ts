@@ -1,13 +1,15 @@
 import { beginWork } from './beginWork';
+import { commitMutationEffects } from './commitWork';
 import { completeWork } from './completeWork';
 import { createWorkInProgress, FiberNode, FiberRootNode } from './fiber';
+import { MutationMask, NoFlags } from './fiberFlags';
 import { HostRoot } from './workTags';
 
 // 全局指针指向正在工作的 fiberNode
 let workInProgress: FiberNode | null;
 
+// * 用于执行初始化的操作
 function prepareRefreshStack(root: FiberRootNode) {
-	// 用于执行初始化的操作
 	// FiberRootNode不是普通Fiber, 不能直接作为 workInProgress
 	workInProgress = createWorkInProgress(root.current, {});
 }
@@ -18,6 +20,7 @@ function prepareRefreshStack(root: FiberRootNode) {
 export function scheduleUpdateOnFiber(fiber: FiberNode) {
 	// TODO 调度功能
 	// ? 对于入口来说, fiber是hostRootFiber, 但是对于其他的更新流程, 传入的fiber就是当前组件对应的fiber
+	// ? 组件对应的 ComponentFiber 更新, 需要回到根节点, 再往下查找
 	// ? 所以需要从当前fiber, 一直往上遍历到 FiberRootNode
 	// ? 所以核心在于获取 FiberRootNode
 	const root = markUpdateFromFiberToRoot(fiber);
@@ -25,7 +28,7 @@ export function scheduleUpdateOnFiber(fiber: FiberNode) {
 	renderRoot(root as FiberRootNode);
 }
 
-// 向上查找根fiber
+// 向上查找根fiber, 也就是fiberRootNode
 function markUpdateFromFiberToRoot(fiber: FiberNode): FiberRootNode | null {
 	let node = fiber;
 	let parent = node.return;
@@ -60,6 +63,53 @@ function renderRoot(root: FiberRootNode) {
 			workInProgress = null;
 		}
 	} while (true);
+
+	// workLoop完成后, 这里就可以得到一颗新创建的FiberNode Tree
+	// ? 这棵树在 root.current.alternate 上
+	// ? root是 fiberRootNode, 他的current指向 hostRootFiber
+	// ? 他的 alternate 是整个更新开始时, 也就是在 prepareRefreshStack 中创建的 wip
+	// ? 此时 wip 已经处理完成了
+	const finishedWork = root.current.alternate;
+	root.finishedWork = finishedWork;
+
+	// 根据 wip fiberNode 树中的flags执行首屏渲染操作
+	commitRoot(root);
+}
+
+function commitRoot(root: FiberRootNode) {
+	// 1. 暂存finishedWork
+	const finishedWork = root.finishedWork;
+	if (finishedWork === null) return;
+	if (__DEV__) {
+		console.warn('commit阶段开始', finishedWork);
+	}
+
+	// 2. 重置(此时已经暂存到了 finishedWork 中)
+	root.finishedWork = null;
+
+	// 3. 判断是否存在3个子阶段需要执行的操作
+	const subTreeHasEffect =
+		(finishedWork.subTressFlags & MutationMask) !== NoFlags;
+
+	const rootHasEffect = (finishedWork.flags & MutationMask) !== NoFlags;
+
+	if (subTreeHasEffect || rootHasEffect) {
+		// 存在effect, 才执行子阶段操作
+		// * beforeMutation
+
+		// * mutation
+		// ? Placement对应的操作核心就在mutation阶段
+		// * 传入当前处理完的 wip, 进入mutation逻辑
+		commitMutationEffects(finishedWork);
+		// root.current 指向的fiber tree 就是 current fiber tree, 也就是 hostRootFiber
+		// 而 finishedWork是本次更新生成的fiber tree, 也就是wip
+		// 此时wip已经处理完成, 因此这里直接更新current即可(还是双缓冲机制)
+		root.current = finishedWork;
+		// * layout
+	} else {
+		// 同样的, 不管fiber树上是否存在需要更新插入删除的节点, 都需要更改current tree, 指向上一次的wip
+		root.current = finishedWork;
+	}
 }
 
 function workLoop() {
@@ -74,8 +124,9 @@ function performUnitOfWork(fiber: FiberNode) {
 	// 如果next没有了就是null, 那么说明没有子fiber
 	// 这个过程就是JSX消费的第一步: fiber有儿子, 遍历儿子
 	const next = beginWork(fiber);
-	// fiber中有个字段叫pendingProps, 也就是工作前的props, 工作后props保存到了memorizedProps中(beginWork工作结束其实就是同步完成了)
-	fiber.memorizeProps = fiber.pendingProps;
+	// fiber中有个字段叫pendingProps, 也就是工作前的props
+	// 工作后props保存到了memorizedProps中(beginWork工作结束其实就是同步完成了)
+	fiber.memorizedProps = fiber.pendingProps;
 	if (next === null) {
 		// next为null, 说明递已经走到最深层了, 此时需要一步一步往回
 		completeUnitOfWork(fiber);

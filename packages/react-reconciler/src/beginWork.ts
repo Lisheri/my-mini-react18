@@ -6,14 +6,14 @@ import { FiberNode } from './fiber';
 import { processUpdateQueue, UpdateQueue } from './updateQueue';
 import { HostComponent, HostRoot, HostText } from './workTags';
 
-// ? 核心工作是比较, 然后返回子fiberNode
+// ? 核心工作是比较, 最终返回子fiberNode
 export const beginWork = (wip: FiberNode): FiberNode | null => {
 	// 主要工作是ReactElement与当然fiberNode比较, 然后返回 子fiberNode
 	switch (wip.tag) {
 		case HostRoot:
 			return updateHostRoot(wip);
 		case HostComponent:
-			return updateHostComponents(wip);
+			return updateHostComponent(wip);
 		case HostText:
 			// 对于HostText来说, 他是没有子节点的, 只有text属性
 			// 同时递归阶段的递阶段, 主要就是递倒了叶子节点, 然后就不能继续往下了, 也就是需要开启"归"阶段
@@ -46,19 +46,19 @@ function updateHostRoot(wip: FiberNode): FiberNode {
 	// wip.memorizedState 其实就是 子ReactElement
 	const nextChildren = wip.memorizedState;
 	// reconcilerChildren 最终会生成子 fiberNode
-	reconcilerChildren(wip, nextChildren);
+	reconcileChildren(wip, nextChildren);
 	return wip.child as FiberNode;
 }
 
 // ? updateHostComponents 不会触发更新, 他只会创建子fiberNode
-function updateHostComponents(wip: FiberNode): FiberNode {
+function updateHostComponent(wip: FiberNode): FiberNode {
 	const nextProps = wip.pendingProps;
 	const nextChildren = nextProps.children;
-	reconcilerChildren(wip, nextChildren);
+	reconcileChildren(wip, nextChildren);
 	return wip.child as FiberNode;
 }
 
-function reconcilerChildren(wip: FiberNode, children?: ReactElement) {
+function reconcileChildren(wip: FiberNode, children?: ReactElement) {
 	// ? 主要原因在于我们处理HostRoot时, 对比的是子节点的current FiberNode与子节点的ReactElement生成子节点的wip FiberNode
 	// 首先获取current
 	const current = wip.alternate;

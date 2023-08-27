@@ -1,4 +1,4 @@
-// 对外暴露两个函数
+// 对外暴露两个函数, 以实现mount时调用的api
 
 import { Container } from 'hostConfig';
 import { ReactElement } from '@mini-react/shared';
@@ -43,6 +43,7 @@ export function updateContainer(
 		hostRootFiber.updateQueue as UpdateQueue<ReactElement | null>,
 		update
 	);
+	// 通过队列调度功能更新
 	scheduleUpdateOnFiber(hostRootFiber);
 	return element;
 }

@@ -1,4 +1,4 @@
-// 类型定义
+// 类型定义(暂时定义为any)
 export type Type = any;
 export type Key = any;
 export type Ref = any;
