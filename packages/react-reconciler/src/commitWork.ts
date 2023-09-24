@@ -81,11 +81,13 @@ const commitPlacement = (finishedWork: FiberNode) => {
 	const hostParent = getHostParent(finishedWork);
 
 	// 找到 finishedWork对应的DOM, 并插入到 hostParent
-	appendPlacementNodeIntoContainer(finishedWork, hostParent);
+	if (hostParent !== null) {
+		appendPlacementNodeIntoContainer(finishedWork, hostParent);
+	}
 };
 
 // 获取父级dom节点
-function getHostParent(fiber: FiberNode): Container {
+function getHostParent(fiber: FiberNode): Container | null {
 	let parent = fiber.return;
 
 	while (parent) {
@@ -107,6 +109,7 @@ function getHostParent(fiber: FiberNode): Container {
 	if (__DEV__) {
 		console.warn('host parent未找到');
 	}
+	return null;
 }
 
 // 将finishedWork对应的宿主节点插入到 他爹(hostParent)身上
@@ -116,7 +119,7 @@ function appendPlacementNodeIntoContainer(
 ) {
 	// 需要对传入的fiber 找到真正的 宿主节点, 然后 append到 hostParent中
 	if (finishedWork.tag === HostComponent || finishedWork.tag === HostText) {
-		appendChildToContainer(finishedWork.stateNode, hostParent);
+		appendChildToContainer(hostParent, finishedWork.stateNode);
 		return;
 	}
 	// 如果当前的 finishedWork对应的tag不是上述两种类型, 说明他并非是真实的宿主节点对应的fiberNode

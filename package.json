@@ -9,7 +9,7 @@
 		"prepare": "husky install",
 		"lint": "lint-staged",
 		"test": "vitest",
-		"build:dev": "rm -rf ./dist && rollup --bundleConfigAsCjs --config scripts/rollup/react.config.js"
+		"build:dev": "rm -rf ./dist && rollup --bundleConfigAsCjs --config scripts/rollup/dev.config.js"
 	},
 	"keywords": [],
 	"author": "",
@@ -17,6 +17,7 @@
 	"devDependencies": {
 		"@commitlint/cli": "^17.4.4",
 		"@commitlint/config-conventional": "^17.4.4",
+		"@rollup/plugin-alias": "^5.0.0",
 		"@rollup/plugin-commonjs": "^24.0.1",
 		"@typescript-eslint/eslint-plugin": "^5.53.0",
 		"@typescript-eslint/parser": "^5.53.0",

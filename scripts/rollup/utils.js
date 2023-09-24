@@ -39,7 +39,8 @@ export const getBaseRollupPlugins = ({
   },
   typescript = {}
 } = {}) => {
+  console.info(alias)
   // 返回基本的 plugins
   // 先执行 commonjs的, 在执行ts的
-  return [replace({ alias }), cjs(), ts(typescript)]
+  return [replace({ ...alias, preventAssignment: true }), cjs(), ts(typescript)]
 }

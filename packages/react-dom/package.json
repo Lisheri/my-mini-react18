@@ -1,0 +1,16 @@
+{
+  "name": "react-dom",
+  "version": "1.0.0",
+  "description": "react-dom环境api",
+  "module": "index.ts",
+  "dependencies": {
+    "@mini-react/shared": "workspace:*",
+    "@mini-react/react-reconciler": "workspace:*"
+  },
+  "peerDependencies": {
+    "react": "workspace:*"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}

@@ -4,6 +4,7 @@
 //    + 因为归的阶段是从下往上的, 可以获取到最深层的子节点
 
 import {
+	Container,
 	appendInitialChild,
 	createInstance,
 	createTextInstance
@@ -31,7 +32,7 @@ export const completeWork = (wip: FiberNode) => {
 				// TODO 模拟实现, 抽象层级应当更高, 只是对于浏览器来说他是DOM节点
 				// ? 由于当前处于 completeWork中, 说明当前创建的这个DOM, 是这个DOM树中最上面的一个
 				// ? 因此需要将剩下的离屏DOM树 wip, 挂载到创建的dom, 也就是instance节点下
-				const instance = createInstance(wip.type, newProps);
+				const instance = createInstance(wip.type!, newProps);
 				// 2. 将DOM插入到DOM树中
 				appendAllChildren(instance, wip);
 				// ? 挂载完成后, 将instance 赋值给 stateNode
@@ -77,7 +78,7 @@ export const completeWork = (wip: FiberNode) => {
 // ? 如果往下到头了, 则从最底下开始, 处理兄弟
 // ? 兄弟处理完成后, 就往上找
 // ? 整个流程其实和更新流程一样, 是一个递归的过程
-function appendAllChildren(parent: FiberNode, wip: FiberNode) {
+function appendAllChildren(parent: Container, wip: FiberNode) {
 	let node = wip.child;
 	while (node !== null) {
 		// 由于node可能会有很多兄弟节点, 不一定是一个单节点

@@ -21,8 +21,8 @@
     "paths": {
       "@mini-react/*": ["packages/*/src"],
       "mini-react": ["packages/react/src"],
-      // 暂时设置到此处
-      "hostConfig": ["packages/react-reconciler/src/hostConfig"]
+      // 指向react-dom下的hostConfig
+      "hostConfig": ["packages/react-dom/src/hostConfig"]
     }
   },
   "include": ["packages/*/src", "packages/*/__tests__"],

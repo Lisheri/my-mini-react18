@@ -19,7 +19,7 @@ export class FiberNode {
 	// ? stateNode这个东西, 以 HostComponent为例, 比如div这个 HostComponent, 他的 stateNode 保留的就是 div这个DOM
 	public stateNode: any;
 	// ? fiberNode的类型, 比如 FunctionComponent, 他的tag是0, type就是 函数组件 本身: (props) => JSX
-	public type: ((...args: any[]) => any) | null;
+	public type: any;
 	// * 指向父级fiberNode
 	// ? FiberNode是作为工作单元, 当前单元结束后, 下一个就是他爹作为新的工作单元, 因此叫return
 	public return: FiberNode | null;
