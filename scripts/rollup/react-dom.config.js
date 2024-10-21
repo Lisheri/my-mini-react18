@@ -21,13 +21,13 @@ export default [
 		output: [
 			{
 				file: `${pkgDistPath}/index.js`,
-				name: 'index.js',
+				name: 'ReactDOM',
 				// 这里兼容 commonjs和esm的 方式
 				format: 'umd'
 			},
 			{
 				file: `${pkgDistPath}/client.js`,
-				name: 'client.js',
+				name: 'ReactDOM',
 				// 这里兼容 commonjs和esm的 方式
 				format: 'umd'
 			}

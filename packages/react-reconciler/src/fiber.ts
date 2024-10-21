@@ -21,7 +21,7 @@ export class FiberNode {
 	// ? fiberNode的类型, 比如 FunctionComponent, 他的tag是0, type就是 函数组件 本身: (props) => JSX
 	public type: any;
 	// * 指向父级fiberNode
-	// ? FiberNode是作为工作单元, 当前单元结束后, 下一个就是他爹作为新的工作单元, 因此叫return
+	// ? FiberNode是作为工作单元, 当前单元结束后, 下一个就是他爹作为新的工作单元, 因此叫return(指向他爹FiberNode)
 	public return: FiberNode | null;
 	// ? 右边的兄弟fiberNode
 	public sibling: FiberNode | null;

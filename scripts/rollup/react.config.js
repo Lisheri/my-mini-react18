@@ -18,7 +18,7 @@ export default [
     input: `${pkgPath}/${module}`, // 入口
     output: {
       file: `${pkgDistPath}/index.js`,
-      name: 'index.js',
+      name: 'React',
       // 这里兼容 commonjs和esm的 方式
       format: 'umd'
     },

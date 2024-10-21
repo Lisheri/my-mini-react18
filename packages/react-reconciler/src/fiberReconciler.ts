@@ -1,5 +1,4 @@
 // 对外暴露两个函数, 以实现mount时调用的api
-
 import { Container } from 'hostConfig';
 import { ReactElement } from '@mini-react/shared';
 import { FiberNode, FiberRootNode } from './fiber';
