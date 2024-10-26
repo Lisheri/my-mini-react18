@@ -134,7 +134,7 @@ export const createWorkInProgress = (
 		wip.subTressFlags = NoFlags;
 	}
 	wip.type = current.type;
-	// 它使用 shared: {pending}, 主要利用浅拷贝, 让 current和wip都可以修改 pending内部内容
+	// 它使用 shared: {pending}, 主要利用相同的指针, 让 current和wip都可以修改同一个pending内部内容
 	wip.updateQueue = current.updateQueue;
 	wip.child = current.child;
 	wip.memorizedProps = current.memorizedProps;

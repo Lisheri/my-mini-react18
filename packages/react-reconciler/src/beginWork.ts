@@ -20,7 +20,7 @@ export const beginWork = (wip: FiberNode): FiberNode | null => {
 			return null;
 		default:
 			if (__DEV__) {
-				console.warn('beginWork未实现类型');
+				console.warn(`beginWork未实现类型: ${wip.tag}`);
 			}
 			return null;
 	}
@@ -28,12 +28,15 @@ export const beginWork = (wip: FiberNode): FiberNode | null => {
 
 /**
  * 处理HostRoot更新
+ * 1. 计算状态最新值
+ * 2. 创建子fiberNode
  * @param wip workInProgress 当前处理的FiberNode节点
  */
 function updateHostRoot(wip: FiberNode): FiberNode {
 	// 初始状态下 memorizedState 为null
 	const baseState = wip.memorizedState;
 	const updateQueue = wip.updateQueue as UpdateQueue<ReactElement>;
+	// 暂存, 对于首屏渲染, 这个pending就是App对应的Update<ReactElement>
 	const pending = updateQueue.shared.pending;
 	// 计算pending的update
 	// ? 因为计算完以后, 这些pending都会出队, 已经没有用了
@@ -45,6 +48,7 @@ function updateHostRoot(wip: FiberNode): FiberNode {
 	wip.memorizedState = memorizedState;
 	// wip.memorizedState 其实就是 子ReactElement
 	const nextChildren = wip.memorizedState;
+	// 处理儿子
 	// reconcilerChildren 最终会生成子 fiberNode
 	reconcileChildren(wip, nextChildren);
 	return wip.child as FiberNode;

@@ -31,6 +31,7 @@ export const createUpdate = <T>(action: Action<T>): Update<T> => {
 // 创建 updateQueue
 export const createUpdateQueue = <State>(): UpdateQueue<State> => {
 	return {
+		// 这里使用 shared: {pending}, 主要利用指针shared, 让 current和wip都可以访问同一个pending
 		shared: {
 			pending: null
 		}

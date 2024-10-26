@@ -40,6 +40,7 @@ function markUpdateFromFiberToRoot(fiber: FiberNode): FiberRootNode | null {
 
 	if (node.tag === HostRoot) {
 		// hostRootFiber对应的tag为HostRoot
+		// hostRootFiber是通过 stateNode指向fiberRootNode
 		return node.stateNode;
 	}
 	// 说明没找到
@@ -58,7 +59,10 @@ function renderRoot(root: FiberRootNode) {
 			workLoop();
 			break;
 		} catch (e) {
-			console.error('workLoop发生错误:', e);
+			if (__DEV__) {
+				// 仅开发环境打印
+				console.error('workLoop发生错误:', e);
+			}
 			// 有报错就重置 workInProgress
 			workInProgress = null;
 		}

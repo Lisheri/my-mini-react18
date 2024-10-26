@@ -59,6 +59,11 @@ function createChildReconciler(shouldTrackEffects: boolean) {
 		return fiber;
 	}
 
+	/**
+	 * @param returnFiber 父fiber
+	 * @param currentFiber 当前子节点的 currentFiberNode
+	 * @param newChild 子节点对应的 ReactElement
+	 */
 	return function reconcileChildFibers(
 		returnFiber: FiberNode,
 		currentFiber: FiberNode | null,
@@ -86,7 +91,9 @@ function createChildReconciler(shouldTrackEffects: boolean) {
 		// hostText 文本节点情况
 		if (typeof newChild === 'string' || typeof newChild === 'number') {
 			// 文本节点
-			return reconcileSingleTextNode(returnFiber, currentFiber, newChild);
+			return placeSingleChild(
+				reconcileSingleTextNode(returnFiber, currentFiber, newChild)
+			);
 		}
 		if (__DEV__) {
 			console.error('未实现的reconcile类型', newChild);

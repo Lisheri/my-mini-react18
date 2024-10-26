@@ -13,7 +13,8 @@ import { FiberNode } from './fiber';
 import { HostComponent, HostRoot, HostText } from './workTags';
 import { NoFlags } from './fiberFlags';
 
-// + 同时在往上的过程中, 可以将子节点插入到他爹身上, 依次往上, 离屏DOM就构建完成了
+// 递阶段所有fiberNode已经创建完成
+// + 同时在往上的过程中, 可以将子节点插入到他爹身上, 依次往上, 离屏DOM Tree就构建完成了
 export const completeWork = (wip: FiberNode) => {
 	// 递归中的归阶段
 	const newProps = wip.pendingProps;
@@ -29,7 +30,10 @@ export const completeWork = (wip: FiberNode) => {
 				// mount
 				// 1. 构建DOM
 				// ? 通过 调用 createInstance 创建宿主环境的实例
-				// TODO 模拟实现, 抽象层级应当更高, 只是对于浏览器来说他是DOM节点
+				// * reconciler的抽象层级是更高的, 它并不关注宿主环境创建如何实现, 只需要调用createInstance生成宿主环境节点实例即可
+				// * 在构建时, 可以根据不同的宿主环境, 实现不同的createInstance, 就可以实现不同环境的节点创建逻辑
+				// * 但是他们对应的reconciler只有这一套
+				// * 对于浏览器, 就是dom节点, 后续均使用dom模拟
 				// ? 由于当前处于 completeWork中, 说明当前创建的这个DOM, 是这个DOM树中最上面的一个
 				// ? 因此需要将剩下的离屏DOM树 wip, 挂载到创建的dom, 也就是instance节点下
 				const instance = createInstance(wip.type!, newProps);
@@ -62,6 +66,7 @@ export const completeWork = (wip: FiberNode) => {
 			bubbleProperties(wip);
 			return null;
 		default:
+			// 没有tag肯定是有问题的
 			if (__DEV__) {
 				console.warn('未处理的completeWork情况', wip);
 			}
@@ -80,11 +85,11 @@ export const completeWork = (wip: FiberNode) => {
 // ? 整个流程其实和更新流程一样, 是一个递归的过程
 function appendAllChildren(parent: Container, wip: FiberNode) {
 	let node = wip.child;
+	// 需要应对更加复杂的情况, 比如说A是一个Fragment, 因此需要循环处理, 直到node为null, 或者node为wip了
 	while (node !== null) {
 		// 由于node可能会有很多兄弟节点, 不一定是一个单节点
 		if (node.tag === HostComponent || node.tag === HostText) {
 			// 在parent下插入 node.stateNode
-			// 但其实还有更加复杂的情况, 比如说A是一个Fragment
 			appendInitialChild(parent, node.stateNode);
 		} else if (node.child !== null) {
 			// 当前节点没有儿子, 也是结束标识, 往上走处理爹那一层
@@ -122,6 +127,7 @@ function bubbleProperties(wip: FiberNode) {
 	let child = wip.child;
 	while (child !== null) {
 		// 直接基于按位或的方式, 将 child的subTreeFlags附加在subTreeFlags中
+		// * subTreeFlags中将包含当前节点的子节点的subTreeFlags以及child本身的flags
 		subTreeFlags |= child.subTressFlags;
 		subTreeFlags |= child.flags;
 		// 处理其他兄弟
