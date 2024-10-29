@@ -77,9 +77,16 @@ function renderRoot(root: FiberRootNode) {
 	root.finishedWork = finishedWork;
 
 	// 根据 wip fiberNode 树中的flags执行首屏渲染操作
+	// commit流程入口
 	commitRoot(root);
 }
 
+// 可以类比于git commit这个过程, 用于提交
+// 就是将workLoop生成的产物提交到宿主环境
+// 一共三个子阶段:
+// + beforeMutation
+// + mutation
+// + layout
 function commitRoot(root: FiberRootNode) {
 	// 1. 暂存finishedWork
 	const finishedWork = root.finishedWork;
@@ -99,17 +106,18 @@ function commitRoot(root: FiberRootNode) {
 
 	if (subTreeHasEffect || rootHasEffect) {
 		// 存在effect, 才执行子阶段操作
-		// * beforeMutation
-
-		// * mutation
+		// * beforeMutation(突变前)
+		// * mutation(突变)
+		// * 突变是一种操作UI的方式, 指的是将一个属性的一个值变为另一个值, 比如domAPI的操作, 均为突变
 		// ? Placement对应的操作核心就在mutation阶段
 		// * 传入当前处理完的 wip, 进入mutation逻辑
 		commitMutationEffects(finishedWork);
 		// root.current 指向的fiber tree 就是 current fiber tree, 也就是 hostRootFiber
 		// 而 finishedWork是本次更新生成的fiber tree, 也就是wip
 		// 此时wip已经处理完成, 因此这里直接更新current即可(还是双缓冲机制)
+		// * 此处对应commit阶段做的第一件事情, fiber树的切换, 他发生在mutation和layout之间, 因此这里直接更新current即可, 完成fiberTree切换即可
 		root.current = finishedWork;
-		// * layout
+		// * layout(因为useLayoutEffect, 所以这个阶段也被称为layout阶段)
 	} else {
 		// 同样的, 不管fiber树上是否存在需要更新插入删除的节点, 都需要更改current tree, 指向上一次的wip
 		root.current = finishedWork;

@@ -30,11 +30,12 @@ export const commitMutationEffects = (finishedWork: FiberNode) => {
 			(nextEffect.subTressFlags & MutationMask) !== NoFlags &&
 			child !== null
 		) {
-			// 子节点存在对应的操作
+			// 子节点存在对应的mutation阶段的操作
 			nextEffect = child;
 		} else {
 			// 当前节点的subTreeFlags中不存在Mutation操作, 或者已经到底
 			// 此时需要往上遍历
+			// 不包含subTreeFlags那么可能包含Flags, 所以也需要继续往上找
 			up: while (nextEffect !== null) {
 				// 执行真正的Mutation操作
 				commitMutationEffectsOnFiber(nextEffect);
@@ -42,6 +43,7 @@ export const commitMutationEffects = (finishedWork: FiberNode) => {
 				const sibling: FiberNode | null = nextEffect.sibling;
 				if (sibling !== null) {
 					nextEffect = sibling;
+					// 继续处理sibling, 然后停止内层while
 					break up;
 				}
 				// 往上
@@ -73,11 +75,13 @@ const commitMutationEffectsOnFiber = (finishedWork: FiberNode) => {
 
 // 需要拿到parentDOM, 以及 finishedWork 对应的DOM节点
 const commitPlacement = (finishedWork: FiberNode) => {
+	// 1. 需要知道插入到哪个爹下面
+	// 2. 需要知道finishedWork这个fiber对应的DOM节点
 	if (__DEV__) {
 		console.warn('执行Placement操作', finishedWork);
 	}
 
-	// parentDOM
+	// parentDOM 寻找爹(获取的是宿主环境的爹节点)
 	const hostParent = getHostParent(finishedWork);
 
 	// 找到 finishedWork对应的DOM, 并插入到 hostParent
@@ -118,7 +122,9 @@ function appendPlacementNodeIntoContainer(
 	hostParent: Container
 ) {
 	// 需要对传入的fiber 找到真正的 宿主节点, 然后 append到 hostParent中
+	// 这里期望的host类型只有HostComponent以及HostText, 对于插入的节点就这两种, 不会存在HostRoot
 	if (finishedWork.tag === HostComponent || finishedWork.tag === HostText) {
+		// stateNode对应的就是宿主环境的节点
 		appendChildToContainer(hostParent, finishedWork.stateNode);
 		return;
 	}
