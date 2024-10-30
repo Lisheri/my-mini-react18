@@ -137,8 +137,8 @@ function performUnitOfWork(fiber: FiberNode) {
 	// 这个过程就是JSX消费的第一步: fiber有儿子, 遍历儿子
 	const next = beginWork(fiber);
 	// fiber中有个字段叫pendingProps, 也就是工作前的props
-	// 工作后props保存到了memorizedProps中(beginWork工作结束其实就是同步完成了)
-	fiber.memorizedProps = fiber.pendingProps;
+	// 工作后props保存到了memoizedProps中(beginWork工作结束其实就是同步完成了)
+	fiber.memoizedProps = fiber.pendingProps;
 	if (next === null) {
 		// next为null, 说明递已经走到最深层了, 此时需要一步一步往回
 		completeUnitOfWork(fiber);

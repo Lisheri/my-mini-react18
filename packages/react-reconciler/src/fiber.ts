@@ -32,9 +32,10 @@ export class FiberNode {
 	// ? ref属性
 	public ref: Ref;
 	// ? 工作完成后最终确定的props
-	public memorizedProps: Props | null;
+	public memoizedProps: Props | null;
 	// ? 更新完成的新的状态
-	public memorizedState: any;
+	// * 在 FunctionComponent的FiberNode 中, 它指向其处理的 Hooks链表头结点
+	public memoizedState: any;
 	// ? 用于切换 current FiberNode 和 workInProgress FiberNode
 	public alternate: FiberNode | null;
 	// ? 副作用标记
@@ -73,7 +74,7 @@ export class FiberNode {
 
 		// --------------------------- 作为工作单元 start ---------------------------
 		this.pendingProps = pendingProps;
-		this.memorizedProps = null;
+		this.memoizedProps = null;
 		// 在更新时, 会将 workInProgress 指向 current, 更新前将 current 指向 workInProgress
 		this.alternate = null;
 		// flags统称为 副作用标记
@@ -82,7 +83,7 @@ export class FiberNode {
 		this.subTressFlags = NoFlags;
 		// 更新队列
 		this.updateQueue = null;
-		this.memorizedState = null;
+		this.memoizedState = null;
 		// --------------------------- 作为工作单元 end ---------------------------
 	}
 }
@@ -137,8 +138,8 @@ export const createWorkInProgress = (
 	// 它使用 shared: {pending}, 主要利用相同的指针, 让 current和wip都可以修改同一个pending内部内容
 	wip.updateQueue = current.updateQueue;
 	wip.child = current.child;
-	wip.memorizedProps = current.memorizedProps;
-	wip.memorizedState = current.memorizedState;
+	wip.memoizedProps = current.memoizedProps;
+	wip.memoizedState = current.memoizedState;
 	return wip;
 };
 

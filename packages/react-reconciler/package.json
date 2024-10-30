@@ -10,7 +10,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@mini-react/shared": "workspace:^1.0.0"
+    "@mini-react/shared": "workspace:^1.0.0",
+    "react": "workspace:^1.0.0"
   },
   "devDependencies": {
     "@rollup/plugin-replace": "^5.0.2"

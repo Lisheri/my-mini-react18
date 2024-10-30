@@ -41,21 +41,21 @@ export const beginWork = (wip: FiberNode): FiberNode | null => {
  * @param wip workInProgress 当前处理的FiberNode节点
  */
 function updateHostRoot(wip: FiberNode): FiberNode {
-	// 初始状态下 memorizedState 为null
-	const baseState = wip.memorizedState;
+	// 初始状态下 memoizedState 为null
+	const baseState = wip.memoizedState;
 	const updateQueue = wip.updateQueue as UpdateQueue<ReactElement>;
 	// 暂存, 对于首屏渲染, 这个pending就是App对应的Update<ReactElement>
 	const pending = updateQueue.shared.pending;
 	// 计算pending的update
 	// ? 因为计算完以后, 这些pending都会出队, 已经没有用了
 	updateQueue.shared.pending = null;
-	// 获取最新的 memorizedState, 对于 ReactElement来说, 这个 memorizedState 其实就是传入的 ReactElement
-	const { memorizedState } = processUpdateQueue(baseState, pending);
+	// 获取最新的 memoizedState, 对于 ReactElement来说, 这个 memoizedState 其实就是传入的 ReactElement
+	const { memoizedState } = processUpdateQueue(baseState, pending);
 
 	// 更新最新状态
-	wip.memorizedState = memorizedState;
-	// wip.memorizedState 其实就是 子ReactElement
-	const nextChildren = wip.memorizedState;
+	wip.memoizedState = memoizedState;
+	// wip.memoizedState 其实就是 子ReactElement
+	const nextChildren = wip.memoizedState;
 	// 处理儿子
 	// reconcilerChildren 最终会生成子 fiberNode
 	reconcileChildren(wip, nextChildren);

@@ -76,9 +76,9 @@ class FiberNode {
 	// ? ref属性
 	public ref: Ref;
 	// ? 工作完成后最终确定的props
-	public memorizedProps: Props | null;
+	public memoizedProps: Props | null;
 	// ? 更新完成的新的状态
-	public memorizedState: any;
+	public memoizedState: any;
 	// ? 用于切换 current FiberNode 和 workInProgress FiberNode
 	public alternate: FiberNode | null;
 	// ? 副作用标记
@@ -117,7 +117,7 @@ class FiberNode {
 
 		// --------------------------- 作为工作单元 start ---------------------------
 		this.pendingProps = pendingProps;
-		this.memorizedProps = null;
+		this.memoizedProps = null;
 		// 在更新时, 会将 workInProgress 指向 current, 更新前将 current 指向 workInProgress
 		this.alternate = null;
 		// flags统称为 副作用标记
@@ -126,7 +126,7 @@ class FiberNode {
 		this.subTressFlags = NoFlags;
 		// 更新队列
 		this.updateQueue = null;
-		this.memorizedState = null;
+		this.memoizedState = null;
 		// --------------------------- 作为工作单元 end ---------------------------
 	}
 }

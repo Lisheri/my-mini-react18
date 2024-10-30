@@ -1,6 +1,7 @@
 // 更新队列
 
 import { Action } from '@mini-react/shared';
+import type { Dispatch } from 'react/src/currentDispatcher';
 
 // Update数据结构
 export interface Update<State> {
@@ -19,6 +20,7 @@ export interface UpdateQueue<State> {
 	shared: {
 		pending: Update<State> | null;
 	};
+	dispatch: Dispatch<State> | null;
 }
 
 // 创建 update
@@ -34,7 +36,9 @@ export const createUpdateQueue = <State>(): UpdateQueue<State> => {
 		// 这里使用 shared: {pending}, 主要利用指针shared, 让 current和wip都可以访问同一个pending
 		shared: {
 			pending: null
-		}
+		},
+		// 兼容Hooks的数据结构, 用于保存Hooks的dispatch
+		dispatch: null
 	} as UpdateQueue<State>;
 };
 
@@ -51,25 +55,25 @@ export const enqueueUpdate = <State>(
 export const processUpdateQueue = <State>(
 	baseState: State,
 	pendingUpdate: Update<State> | null
-): { memorizedState: State } => {
+): { memoizedState: State } => {
 	const result: ReturnType<typeof processUpdateQueue<State>> = {
 		// 更新完成的状态, fiber也需要
-		memorizedState: baseState
+		memoizedState: baseState
 	};
 
 	// ---------------------- 消费过程 ------------------------------
 	// 有两种消费的情况
 	// 如果pendingUpdate存在
 	if (pendingUpdate !== null) {
-		// baseUpdate: 1, update: 2 -> memorizedState: 2
-		// baseUpdate: 1, update: x => 2 * x -> memorizedState: update(baseUpdate)
+		// baseUpdate: 1, update: 2 -> memoizedState: 2
+		// baseUpdate: 1, update: x => 2 * x -> memoizedState: update(baseUpdate)
 		const action = pendingUpdate.action;
 		if (action instanceof Function) {
 			// action为函数, 对应第二种类型
-			result.memorizedState = action(baseState);
+			result.memoizedState = action(baseState);
 		} else {
-			// 否则memorizedState 就是 action本身(也就是传入setState的参数)
-			result.memorizedState = action;
+			// 否则memoizedState 就是 action本身(也就是传入setState的参数)
+			result.memoizedState = action;
 		}
 	}
 
