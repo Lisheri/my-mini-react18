@@ -154,6 +154,7 @@ export function createFiberFromElement(element: ReactElement): FiberNode {
 		console.warn('未定义的type类型', element);
 	}
 	const fiber = new FiberNode(fiberTag, props, key);
+	// 对于函数组件来说, 这个type就是组件本身的执行函数
 	fiber.type = type;
 	return fiber;
 }

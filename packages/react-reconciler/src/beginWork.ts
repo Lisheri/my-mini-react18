@@ -3,8 +3,14 @@
 import { ReactElement } from 'packages/shared';
 import { mountChildFibers, reconcileChildFibers } from './childFibers';
 import { FiberNode } from './fiber';
+import { renderWithHooks } from './fiberHooks';
 import { processUpdateQueue, UpdateQueue } from './updateQueue';
-import { HostComponent, HostRoot, HostText } from './workTags';
+import {
+	FunctionComponent,
+	HostComponent,
+	HostRoot,
+	HostText
+} from './workTags';
 
 // ? 核心工作是比较, 最终返回子fiberNode
 export const beginWork = (wip: FiberNode): FiberNode | null => {
@@ -18,6 +24,8 @@ export const beginWork = (wip: FiberNode): FiberNode | null => {
 			// 对于HostText来说, 他是没有子节点的, 只有text属性
 			// 同时递归阶段的递阶段, 主要就是递倒了叶子节点, 然后就不能继续往下了, 也就是需要开启"归"阶段
 			return null;
+		case FunctionComponent:
+			return updateFunctionComponent(wip);
 		default:
 			if (__DEV__) {
 				console.warn(`beginWork未实现类型: ${wip.tag}`);
@@ -58,6 +66,21 @@ function updateHostRoot(wip: FiberNode): FiberNode {
 function updateHostComponent(wip: FiberNode): FiberNode {
 	const nextProps = wip.pendingProps;
 	const nextChildren = nextProps.children;
+	reconcileChildren(wip, nextChildren);
+	return wip.child as FiberNode;
+}
+
+function updateFunctionComponent(wip: FiberNode): FiberNode {
+	const nextChildren = renderWithHooks(wip);
+	/*
+    假设存在一个FC, 如下
+    function App() {
+      return <img />
+    }
+    对于App这个组件, 他的children其实就是这个 img组件, 要得到这个组件, 需要对App进行调用
+    App() -> img(children)
+    因此这里需要封装一个函数, 单独执行上述过程, 来获取nextChildren
+  */
 	reconcileChildren(wip, nextChildren);
 	return wip.child as FiberNode;
 }
