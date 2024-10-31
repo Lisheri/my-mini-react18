@@ -25,7 +25,7 @@
       "hostConfig": ["packages/react-dom/src/hostConfig"]
     }
   },
-  "include": ["packages/*/src", "packages/*/__tests__", "packages/react/jsx-dev-runtime.ts"],
+  "include": ["packages/**/*"],
   "exclude": [
     "node_modules",
     "packages/react/example/*"

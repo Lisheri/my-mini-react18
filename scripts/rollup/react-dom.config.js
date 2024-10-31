@@ -27,12 +27,12 @@ export default [
 			},
 			{
 				file: `${pkgDistPath}/client.js`,
-				name: 'ReactDOM',
+				name: 'client',
 				// 这里兼容 commonjs和esm的 方式
 				format: 'umd'
 			}
 		],
-    external: [...Object.keys(peerDependencies)],
+		external: [...Object.keys(peerDependencies)],
 		plugins: [
 			...getBaseRollupPlugins(),
 			// rollup中是被插件  @rollup/plugin-alias 实现的
@@ -59,5 +59,20 @@ export default [
 				})
 			})
 		]
+	},
+	// react-test-utils
+	{
+		input: `${pkgPath}/test-utils.ts`, // 入口
+		// 兼容原版导出, 18以后是走ReactDOM/client
+		output: [
+			{
+				file: `${pkgDistPath}/test-utils.js`,
+				name: 'testUtils',
+				// 这里兼容 commonjs和esm的 方式
+				format: 'umd'
+			}
+		],
+		external: ['react-dom', 'react'],
+		plugins: getBaseRollupPlugins()
 	}
 ];

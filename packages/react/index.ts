@@ -19,6 +19,8 @@ export const __SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED = {
 	currentDispatcher
 };
 
+export const version = '0.0.0';
+export const createElement = jsxDEV;
 export default {
 	// 版本
 	version: '0.0.0',
