@@ -16,7 +16,12 @@ import {
 	HostRoot,
 	HostText
 } from './workTags';
-import { NoFlags } from './fiberFlags';
+import { NoFlags, Update } from './fiberFlags';
+
+// 用于标记更新
+function markUpdate(fiber: FiberNode) {
+	fiber.flags |= Update;
+}
 
 // 递阶段所有fiberNode已经创建完成
 // + 同时在往上的过程中, 可以将子节点插入到他爹身上, 依次往上, 离屏DOM Tree就构建完成了
@@ -31,6 +36,7 @@ export const completeWork = (wip: FiberNode) => {
 			if (current !== null && wip.stateNode) {
 				// TODO update
 				// 此时 stateNode中保存的就是上一次的DOM节点, 因此这个情况其实就是 "update"
+				// 这里类似 Text 处理, 本质上也是对比属性的变化, 然后标记一个Update, 只是这里要对比所有属性
 			} else {
 				// mount
 				// 1. 构建DOM
@@ -54,8 +60,13 @@ export const completeWork = (wip: FiberNode) => {
 		case HostText:
 			// * 对于HostText来说, 流程几乎和HostComponent类似, 只不过是调用 createTextInstance
 			if (current !== null && wip.stateNode) {
-				// TODO update
 				// 此时 stateNode中保存的就是上一次的DOM节点, 因此这个情况其实就是 "update"
+				const oldText = current.memoizedProps.content;
+				const newText = newProps.content;
+				if (oldText !== newText) {
+					// update, 到此为止, 就标记上了 host 变化的 update
+					markUpdate(wip);
+				}
 			} else {
 				// mount
 				// 1. 构建DOM

@@ -1,9 +1,9 @@
-import { jsxDEV } from './src/jsx';
+import { jsx } from './src/jsx';
 import currentDispatcher, {
 	resolveDispatcher,
 	Dispatcher
 } from './src/currentDispatcher';
-
+export { isValidElement } from './src/jsx';
 // 暴露hooks
 export const useState: Dispatcher['useState'] = <T>(
 	initialState: (() => T) | T
@@ -20,10 +20,11 @@ export const __SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED = {
 };
 
 export const version = '0.0.0';
-export const createElement = jsxDEV;
+// TODO 区分环境使用jsx还是jsxDEV
+export const createElement = jsx;
 export default {
 	// 版本
 	version: '0.0.0',
 	// react.createElement, 虽然在17以后, jsx编译都是直接使用jsx方法
-	createElement: jsxDEV
+	createElement: jsx
 };

@@ -47,6 +47,9 @@ export class FiberNode {
 	// ? 更新队列, 此时并不知道state是什么类型, 因此使用unknow
 	public updateQueue: unknown;
 
+	// ? 所有需要删除的子节点集合
+	public deletions: Array<FiberNode> | null = null;
+
 	/**
 	 *
 	 * @param tag 节点标签
@@ -77,14 +80,19 @@ export class FiberNode {
 		this.memoizedProps = null;
 		// 在更新时, 会将 workInProgress 指向 current, 更新前将 current 指向 workInProgress
 		this.alternate = null;
-		// flags统称为 副作用标记
-		this.flags = NoFlags;
-		// 子树flags
-		this.subTressFlags = NoFlags;
+
 		// 更新队列
 		this.updateQueue = null;
 		this.memoizedState = null;
 		// --------------------------- 作为工作单元 end ---------------------------
+
+		// --------------------------- 副作用 start ---------------------------
+		// flags统称为 副作用标记
+		this.flags = NoFlags;
+		// 子树flags
+		this.subTressFlags = NoFlags;
+		this.deletions = null;
+		// --------------------------- 副作用 end ---------------------------
 	}
 }
 
@@ -133,6 +141,7 @@ export const createWorkInProgress = (
 		// 清除所有副作用相关, 因为他可能是上次更新遗留的
 		wip.flags = NoFlags;
 		wip.subTressFlags = NoFlags;
+		wip.deletions = null;
 	}
 	wip.type = current.type;
 	// 它使用 shared: {pending}, 主要利用相同的指针, 让 current和wip都可以修改同一个pending内部内容

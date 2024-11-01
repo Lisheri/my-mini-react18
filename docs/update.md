@@ -258,3 +258,43 @@ export default [
   ...
 }
 ```
+
+## 更新流程
+
+### update和mount的区别
+
+#### beginWork
+
++ 需要处理ChildDeletion的情况
++ 需要处理节点移动的情况 (abc -> bca)
+
+#### completeWork
++ 需要处理HostText内容更新的情况
++ 需要处理HostComponent属性变化的情况
+
+#### commitWork
++ 对于ChildDeletion, 需要遍历被删除的子树
+
+#### 对于useState
++ 实现相对于 mountState的updateState
+
+### beginWork流程
+
+> 当前仅针对单一节点进行处理, 暂不考虑节点移动
+
++ singleElement
++ singleTextNode
+
+处理流程如下:
+
+1. 比较是否可以服用 current fiber
+  1. 比较key, 如果key不同, 不能复用
+  2. 比较type, 如果type变化, 则不能复用
+  3. 如果key和type都不同, 则不能复用
+2. 不能复用, 创建新的, 可以复用则直接使用旧的
+
+> 注意: 对于同一个 fiberNode, 即使是反复更新, current, wip这两个fiberNode也会重复使用
+
+### completeWork流程
+
+主要处理`标记Update`的情况, 这里主要处理HostText内容更新
