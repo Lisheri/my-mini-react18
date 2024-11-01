@@ -8,7 +8,9 @@
 
     "transform": {
       "react": {
-        "runtime": "automatic"
+        // 这里如果使用automatic, 那么会使用内部的jsx模块, 而不是本地react包中的reactElement方法
+        "runtime": "classic"
+        // "runtime": "automatic"
       }
     }
   }
