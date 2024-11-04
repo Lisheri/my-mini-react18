@@ -5,7 +5,8 @@ import {
 	UpdateQueue,
 	createUpdate,
 	createUpdateQueue,
-	enqueueUpdate
+	enqueueUpdate,
+	processUpdateQueue
 } from './updateQueue';
 import { Action } from '@mini-react/shared';
 import { scheduleUpdateOnFiber } from './workLoop';
@@ -16,6 +17,8 @@ const { currentDispatcher } = internals;
 let currentlyRenderingFiber: FiberNode | null = null;
 // 指向当前正在处理的Hook
 let workInProgressHook: Hook | null = null;
+// 当前Hook
+let currentHook: Hook | null = null;
 
 interface Hook {
 	// * 对于useState, 这个字段代表的是保存的状态, 但是对于其他的hook, 他的意义是不一样的
@@ -27,12 +30,13 @@ interface Hook {
 export function renderWithHooks(wip: FiberNode) {
 	// 指向正在处理的fiber
 	currentlyRenderingFiber = wip;
-	// 重置
+	// 重置 指向的是 hooks链表头节点
 	wip.memoizedState = null;
 
 	const current = wip.alternate;
 	if (current !== null) {
 		// update
+		currentDispatcher.current = HooksDispatcherOnUpdate;
 	} else {
 		// mount
 		// 这里将共享空间中的current, 指向mount时的hooks实现
@@ -40,10 +44,13 @@ export function renderWithHooks(wip: FiberNode) {
 	}
 	const Component = wip.type; // 函数组件的执行函数, 就保存在FiberNode.type上
 	const props = wip.pendingProps; // 新的函数
+	// 调用时说明FC正在执行
 	const children = Component(props); // 执行函数, 得到新的children, 也就是函数组件的返回结果, 作为函数组件对应的FiberNode.children
-	// TODO 这里应该重置为上一个正在处理的fiber
-	// 重置
+	// ? 这里是否应该重置为上一个正在处理的fiber?(针对queue的情况)
+	// 全局变量均需要重置
 	currentlyRenderingFiber = null;
+	workInProgressHook = null;
+	currentHook = null;
 	return children;
 }
 
@@ -73,6 +80,26 @@ function mountState<State>(
 	return [memoizedState, dispatch];
 }
 
+// 更新时的hooks实现
+function updateState<State>(): [State, Dispatch<State>] {
+	// 1. 找到当前useState对应的hook数据
+	const hook = updateWorkInProgressHook();
+	// 2. 计算新的state
+	const queue = hook.updateQueue as UpdateQueue<State>;
+	const pending = queue.shared.pending;
+
+	if (pending !== null) {
+		// 处理更新队列
+		const { memoizedState } = processUpdateQueue<State>(
+			hook.memoizedState,
+			pending
+		);
+		hook.memoizedState = memoizedState;
+	}
+
+	return [hook.memoizedState, queue.dispatch as Dispatch<State>];
+}
+
 /**
  *
  * @param fiber 当前正在处理的fiberNode
@@ -96,6 +123,7 @@ function dispatchSetState<State>(
 
 // 用于获取当前正在处理的hook对应的数据
 function mountWorkInProgressHook(): Hook {
+	// mount时是新建的一个Hook, 然后形成链表
 	const hook: Hook = {
 		memoizedState: null,
 		next: null,
@@ -121,6 +149,62 @@ function mountWorkInProgressHook(): Hook {
 	return workInProgressHook;
 }
 
+// 用于获取更新时当前正在处理的hook对应的数据
+function updateWorkInProgressHook(): Hook {
+	// 这里和mount不一样的是, 需要从链表中获取当前hook
+	// hook 数据从哪里来? 从 currentHook中来
+	// TODO 缺少render阶段触发的更新处理
+	// 1. 交互阶段触发更新
+	let nextCurrentHook: Hook | null = null; // 指向下一个需要处理的Hook
+	if (currentHook == null) {
+		// 说明即将处理的是FC update时的第一个hook
+		const current = currentlyRenderingFiber?.alternate; // 这是currentlyRenderingFiber对应的currentFiber
+		if (current != null) {
+			nextCurrentHook = current?.memoizedState;
+		} else {
+			// mount阶段(此时需要处理错误边界)
+			nextCurrentHook = null;
+		}
+	} else {
+		// 这个FC update时 后续的 hook, 直接向后取
+		nextCurrentHook = currentHook.next;
+	}
+
+	if (nextCurrentHook === null) {
+		// 说明此时已经走到了曾经update或者mount中, 不存在的hook(但是为何会有这种情况?一般是一一对应)
+		// 说明存在了一个hook, 在if条件语句中进行了调用, 并且mount时, 没有进入对应的条件
+		// 渲染了更多的Hook
+		throw new Error(
+			`Rendered more hooks than during the previous render in FC: ${currentlyRenderingFiber?.type}`
+		);
+	}
+
+	currentHook = nextCurrentHook as Hook;
+	const newHook: Hook = {
+		memoizedState: currentHook.memoizedState,
+		next: null,
+		updateQueue: currentHook.updateQueue
+	};
+	// 这里之后和mount逻辑一样
+	if (workInProgressHook === null) {
+		if (currentlyRenderingFiber === null) {
+			throw new Error('Hooks can only be called inside a component');
+		} else {
+			workInProgressHook = newHook;
+			currentlyRenderingFiber.memoizedState = workInProgressHook;
+		}
+	} else {
+		workInProgressHook.next = newHook;
+		workInProgressHook = newHook;
+	}
+	return workInProgressHook;
+}
+
 const HooksDispatcherOnMount: Dispatcher = {
 	useState: mountState
+};
+
+// 更新时的hooks实现
+const HooksDispatcherOnUpdate: Dispatcher = {
+	useState: updateState
 };

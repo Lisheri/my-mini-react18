@@ -16,9 +16,14 @@ import ReactDOM from 'react-dom/client';
 const root = document.querySelector('#root');
 const Child = (props) => {
 	const [count, setCount] = useState(1000);
-	// window.setCount = setCount;
-	return <span>{count}</span>;
+	window.setCount = setCount;
+	return count === 3 ? <Child2 /> : <span>{count}</span>;
 };
+
+function Child2() {
+	return <div>big-react</div>;
+}
+
 const App = () => (
 	<h1>
 		{/* <span>test-mini-react</span> */}

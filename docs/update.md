@@ -298,3 +298,37 @@ export default [
 ### completeWork流程
 
 主要处理`标记Update`的情况, 这里主要处理HostText内容更新
+
+### commitWork流程
+对于标记 childDeletion 的子树, 由于子树中:
++ 对于FC, 需要处理useEffect unmount 执行, 以及解绑ref
++ 对于 HostComponent, 需要解绑ref
++ 对于子树的 `[根HostComponent]`, 需要移除DOM(因为根节点可能是一个组件)
+
+所以需要实现 `遍历ChildDeletion字数`的流程
+
+### useState
+
+需要实现如下几点:
++ 针对update的dispatcher
++ 实现对标 `mountWorkInProgressHook`的 `updateWorkInProgressHook`
++ 实现 `updateState` 中的 `计算新State逻辑`
+
+其中 `updateWorkInProgressHook`的实现需要考虑的问题:
+
++ Hook数据从何处来?
+  1. 交互阶段触发的更新
+  ```tsx
+  // 交互阶段触发更新
+  <div onClick={() => setState(1)} />
+  ```
+  2. render阶段触发的更新(TODO)
+
+  ```tsx
+  function App() {
+    const [num, setNum] = useState(0);
+    // render阶段触发更新
+    setNum(1);
+    return <div>{num}</div>
+  }
+  ```
