@@ -233,12 +233,9 @@ function createChildReconciler(shouldTrackEffects: boolean) {
 			newFiber.index = i;
 			newFiber.return = returnFiber;
 			if (lastNewFiber === null) {
-				lastNewFiber = newFiber;
-				firstNewFiber = newFiber;
+				lastNewFiber = firstNewFiber = newFiber;
 			} else {
-				lastNewFiber.sibling = newFiber;
-				// 指向下一个新的fiber
-				lastNewFiber = lastNewFiber.sibling;
+				lastNewFiber = (lastNewFiber.sibling as FiberNode) = newFiber;
 			}
 
 			if (!shouldTrackEffects) {
@@ -284,11 +281,11 @@ function createChildReconciler(shouldTrackEffects: boolean) {
 				if (before.tag === HostText) {
 					// 更新前后都是HostText, 直接复用
 					existingChildren.delete(keyToUse);
-					return useFiber(before, { content: element.toString() });
+					return useFiber(before, { content: element + '' });
 				}
 			}
 			// 不能复用, 创建一个HostText类型的Fiber
-			return new FiberNode(HostText, { content: element.toString() }, null);
+			return new FiberNode(HostText, { content: element }, null);
 		}
 
 		// ReactElement类型
@@ -301,13 +298,12 @@ function createChildReconciler(shouldTrackEffects: boolean) {
 							existingChildren.delete(keyToUse);
 							return useFiber(before, element.props);
 						}
-						// 创建一个新的
-						return createFiberFromElement(element);
 					}
 					// TODO Fragment | Array
-					if (Array.isArray(element) && __DEV__) {
-						console.warn('暂未实现fragment类型的child');
-					}
+					// if (Array.isArray(element) && __DEV__) {
+					// 	console.warn('暂未实现fragment类型的child');
+					// }
+					return createFiberFromElement(element);
 			}
 		}
 		return null;
@@ -334,17 +330,12 @@ function createChildReconciler(shouldTrackEffects: boolean) {
 					return placeSingleChild(
 						reconcileSingleElement(returnFiber, currentFiber, newChild)
 					);
-				default:
-					if (__DEV__) {
-						console.error('未实现的reconcile类型', newChild);
-					}
-					return null;
 			}
-		}
-		// 多节点情况: ul>li*3
-		if (Array.isArray(newChild)) {
-			// 处理多节点
-			return reconcileChildrenArray(returnFiber, currentFiber, newChild);
+			// 多节点情况: ul>li*3
+			if (Array.isArray(newChild)) {
+				// 处理多节点
+				return reconcileChildrenArray(returnFiber, currentFiber, newChild);
+			}
 		}
 
 		// hostText 文本节点情况
@@ -354,14 +345,16 @@ function createChildReconciler(shouldTrackEffects: boolean) {
 				reconcileSingleTextNode(returnFiber, currentFiber, newChild)
 			);
 		}
-		if (currentFiber !== null) {
-			// 兜底, 对于未实现的 reconcile类型, 直接标记删除
-			deleteChild(returnFiber, currentFiber);
-		}
+		// if (currentFiber !== null) {
+		// 	// 兜底, 对于未实现的 reconcile类型, 直接标记删除
+		// 	deleteChild(returnFiber, currentFiber);
+		// }
 
-		if (__DEV__) {
-			console.error('未实现的reconcile类型', newChild);
-		}
+		// if (__DEV__) {
+		// 	console.error('未实现的reconcile类型', newChild);
+		// }
+		// 其他情况全部视为删除旧的节点
+		deleteRemainingChildren(returnFiber, currentFiber);
 		return null;
 	};
 }

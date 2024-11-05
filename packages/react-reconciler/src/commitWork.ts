@@ -1,7 +1,9 @@
 import {
 	Container,
+	Instance,
 	appendChildToContainer,
 	commitUpdate,
+	insertChildToContainer,
 	removeChild
 } from 'hostConfig';
 import { FiberNode, FiberRootNode } from './fiber';
@@ -116,11 +118,84 @@ const commitPlacement = (finishedWork: FiberNode) => {
 	// parentDOM 寻找爹(获取的是宿主环境的爹节点)
 	const hostParent = getHostParent(finishedWork);
 
+	// 寻找 host sibling
+	const sibling = getHostSibling(finishedWork);
+
 	// 找到 finishedWork对应的DOM, 并插入到 hostParent
 	if (hostParent !== null) {
-		appendPlacementNodeIntoContainer(finishedWork, hostParent);
+		// appendChild / insertBefore
+		insertOrAppendPlacementNodeIntoContainer(finishedWork, hostParent, sibling);
 	}
 };
+
+// 要支持移动, 就需要支持parentNode.insertBefore
+// insertBefore需要找到 [目标兄弟Host节点]
+// 找到 host sibling
+// 然后执行insertBefore, 插入节点
+/**
+ * 1.目标兄弟节点, 可能并不是目标fiber的直接兄弟节点
+ * 例如:
+ * <A/><B/>
+ * 这样对于A组件来说, 他的目标兄弟节点并不是B, 因为B是一个函数组件, 而是B组件的子组件根节点
+ * 甚至可能B里面还有嵌套的D E F等组件
+ * 因此需要递归往下找儿子, 直到找到第一个Host类型的节点
+ *
+ * 组件的Host sibling是其父节点的sibling
+ * 例如
+ * <App /><div />
+ * function App() {
+ *  return <A />
+ * }
+ * 上述A组件的sibling, 其实对应的就是其父节点的sibling
+ * 这种情况需要往上找, 找到其父节点的兄弟节点
+ *
+ * 2. 不稳定的Host节点不能作为 [目标兄弟Host节点]
+ * 例如
+ * A 被标记为了 Placement, 然后对于B节点寻找其 host sibling时, 此时找到B的 host sibling 是 A
+ * 但是 A 本身就在移动, 那么插入B就不能以A为依据, 因为这样插入的位置是不稳定的, 因为B的位置是根据初始状态的A决定的, 但是A移动后, B也会发生变化, 因此不能以A作为 host sibling
+ */
+function getHostSibling(fiber: FiberNode): Instance | null {
+	let node: FiberNode = fiber;
+	findSibling: while (true) {
+		// 2. 没有兄弟节点, 直接向上遍历
+		while (node.sibling === null) {
+			const parent = node.return;
+			if (
+				parent === null ||
+				parent.tag === HostComponent ||
+				parent.tag === HostRoot
+			) {
+				// 没找到
+				return null;
+			}
+			// 向上找
+			node = parent;
+		}
+		// 1. 有兄弟节点, 但是兄弟不是一个 HostText或者 HostComponent, 那么需要向下遍历找到叶子节点
+		node.sibling.return = node.return;
+		node = node.sibling;
+		// 这就代表他的直接sibling不是一个Host类型的节点
+		while (node.tag !== HostText && node.tag !== HostComponent) {
+			// 向下遍历, 寻找子孙节点
+			if ((node.flags & Placement) !== NoFlags) {
+				// 代表当前节点是不稳定的, 它存在插入标记, 不能作为host sibling
+				continue findSibling;
+			}
+			if (node.child === null) {
+				// 到底了
+				continue findSibling;
+			} else {
+				// 往下走
+				node.child.return = node;
+				node = node.child;
+			}
+		}
+		if ((node.flags & Placement) === NoFlags) {
+			// 找到了
+			return node.stateNode;
+		}
+	}
+}
 
 // 获取父级dom节点
 function getHostParent(fiber: FiberNode): Container | null {
@@ -149,27 +224,33 @@ function getHostParent(fiber: FiberNode): Container | null {
 }
 
 // 将finishedWork对应的宿主节点插入到 他爹(hostParent)身上
-function appendPlacementNodeIntoContainer(
+function insertOrAppendPlacementNodeIntoContainer(
 	finishedWork: FiberNode,
-	hostParent: Container
+	hostParent: Container,
+	before?: Instance | null
 ) {
 	// 需要对传入的fiber 找到真正的 宿主节点, 然后 append到 hostParent中
 	// 这里期望的host类型只有HostComponent以及HostText, 对于插入的节点就这两种, 不会存在HostRoot
 	if (finishedWork.tag === HostComponent || finishedWork.tag === HostText) {
-		// stateNode对应的就是宿主环境的节点
-		appendChildToContainer(hostParent, finishedWork.stateNode);
+		if (before) {
+			// 往前插入
+			insertChildToContainer(finishedWork.stateNode, hostParent, before);
+		} else {
+			// stateNode对应的就是宿主环境的节点
+			appendChildToContainer(hostParent, finishedWork.stateNode);
+		}
 		return;
 	}
 	// 如果当前的 finishedWork对应的tag不是上述两种类型, 说明他并非是真实的宿主节点对应的fiberNode
 	// 此时需要递归往下查找根宿主节点
 	const child = finishedWork.child;
 	if (child !== null) {
-		appendPlacementNodeIntoContainer(child, hostParent);
+		insertOrAppendPlacementNodeIntoContainer(child, hostParent, before);
 		// 找child对应的sibling
 		// ? fiber对应的完全可能是 Fragment
 		let sibling = child.sibling;
 		while (sibling !== null) {
-			appendPlacementNodeIntoContainer(sibling, hostParent);
+			insertOrAppendPlacementNodeIntoContainer(sibling, hostParent, before);
 			sibling = sibling.sibling;
 		}
 	}

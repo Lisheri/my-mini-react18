@@ -15,20 +15,37 @@ import ReactDOM from 'react-dom/client';
 // console.info(import.meta.hot);
 const root = document.querySelector('#root');
 const Child = () => {
-	const [count, setCount] = useState(1000);
-	return <div onClick={() => setCount(count + 1)}>{count}</div>;
+	const [count, setCount] = useState(100);
+	const arr =
+		count % 2 === 0
+			? [<li key="1">1</li>, <li key="2">2</li>, <li key="3">3</li>]
+			: [<li key="3">3</li>, <li key="2">2</li>, <li key="1">1</li>];
+	return <ul onClick={() => setCount(count + 1)}>{arr}</ul>;
 };
 
 // function Child2() {
 // 	return <div>big-react</div>;
 // }
 
-const App = () => (
-	<h1>
-		{/* <span>test-mini-react</span> */}
+const App = () => {
+	/**
+   * 
+   * <h1></h1>
 		<Child text="Hello, World!" />
-	</h1>
-);
+   */
+	// const [count, setCount] = useState(100);
+	// const arr =
+	// 	count % 2 === 0
+	// 		? [<li key="1">1</li>, <li key="2">2</li>, <li key="3">3</li>]
+	// 		: [<li key="3">3</li>, <li key="2">2</li>, <li key="1">1</li>];
+	// return <ul onClick={() => setCount(count + 1)}>{arr}</ul>;
+	// return <Child />
+	return (
+		<div>
+			<Child />
+		</div>
+	);
+};
 
 ReactDOM.createRoot(root!).render(<App />);
 

@@ -1,6 +1,6 @@
 // 递归中 "递" 的过程
 
-import { ReactElement } from 'packages/shared';
+import { ReactElement } from '@mini-react/shared';
 import { mountChildFibers, reconcileChildFibers } from './childFibers';
 import { FiberNode } from './fiber';
 import { renderWithHooks } from './fiberHooks';

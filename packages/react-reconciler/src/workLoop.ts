@@ -159,6 +159,7 @@ function completeUnitOfWork(fiber: FiberNode) {
 		if (sibling !== null) {
 			// 有兄弟处理兄弟
 			workInProgress = sibling;
+			return;
 		} else {
 			// 没有兄弟往上退, 继续处理上层兄弟
 			node = node.return;

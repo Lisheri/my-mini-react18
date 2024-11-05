@@ -65,3 +65,12 @@ export function removeChild(
 ) {
 	container.removeChild(child);
 }
+
+export function insertChildToContainer(
+	child: Instance,
+	container: Container,
+	before: Instance
+) {
+	// 往前插入
+	container.insertBefore(child, before);
+}
