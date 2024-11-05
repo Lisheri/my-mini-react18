@@ -31,6 +31,24 @@ function createChildReconciler(shouldTrackEffects: boolean) {
 			// 因为deletions曾经已经有内容了, 因此说明flags中已经标记了 ChildDeletion, 所以这里不需要重复收集
 		}
 	}
+
+	// 为剩下的兄弟节点增加删除标记
+	function deleteRemainingChildren(
+		returnFiber: FiberNode,
+		currentFirstChild: FiberNode | null
+	) {
+		if (!shouldTrackEffects) {
+			// 无需追踪副作用则不需要标记
+			return;
+		}
+
+		let childToDelete = currentFirstChild;
+		while (childToDelete !== null) {
+			deleteChild(returnFiber, childToDelete);
+			// 处理兄弟
+			childToDelete = childToDelete.sibling;
+		}
+	}
 	// 这里在外层函数处理参数差异, 在生成一个新的函数
 	// + 按理来说不标记副作用以后, 是不会生成 Placement 标记的, 但实际上我们希望的是对根节点执行一次 Placement
 	// + 但实际上在初始化的过程中, 也就是在 workLoop -> renderRoot -> prepareRefreshStack 时
@@ -40,6 +58,12 @@ function createChildReconciler(shouldTrackEffects: boolean) {
 	// + 对于 hostRootFiber, 就会走到 update 逻辑中, 他会被插入一个 Placement Flag, 通过这个 Placement Flag, 最终会执行一次 dom 插入操作
 	// + 就会将离屏构建好的dom节点插入到dom树中
 
+	// 单节点diff, 区分 A1 -> B1 | A1 -> A2 | ABC -> A | ABC -> A1
+	// 一共四种情况
+	// 1. key相同, type相同, 复用当前节点, 其他删除. 如ABC -> A
+	// 2. key相同, type不同, 没有可以复用的节点, 需要全部删除, 在创建新的. 如 ABC -> A1
+	// 3. key不同, type相同, 当前节点不能复用, 兄弟节点可能可以复用
+	// 4. key不同, type不同, 当前节点不能复用, 兄弟节点可能可以复用
 	function reconcileSingleElement(
 		returnFiber: FiberNode,
 		currentFiber: FiberNode | null,
@@ -50,21 +74,24 @@ function createChildReconciler(shouldTrackEffects: boolean) {
 		// TODO 这里仅处理了单节点, 未处理多节点
 		// 1. 获取key
 		const key = element.key;
-		work: if (currentFiber !== null) {
+		work: while (currentFiber !== null) {
 			// update情况
 			if (currentFiber.key === key) {
 				// key相同, 接着比较type是否相同(也许key没变, 但是节点类型发生了变化)
 				if (isValidElement(element)) {
+					// * 1. key相同 type 相同, 复用当前节点, 删除所有旧节点
 					if (currentFiber.type === element.type) {
 						// type相同, 说明这个节点是同一个节点, 可以复用
 						// 但是这里不需要做任何处理, 因为这个fiber会被返回, 由reconcileChildFibers处理
 						// 新的props在element上
 						const existing = useFiber(currentFiber, element.props);
 						existing.return = returnFiber;
+						// 当前节点可复用, 需要标记剩下的节点删除
+						deleteRemainingChildren(returnFiber, currentFiber.sibling); // 当前是复用的, 因此第一个处理节点是他的下一个兄弟
 						return existing;
 					}
-					// 如果type不同, 同样需要删除旧的, 然后创建新的, 因为type发生了变化说明原有节点已经和现有节点不同了
-					deleteChild(returnFiber, currentFiber);
+					// * 2. key相同, type不同, 删除所有旧的节点
+					deleteRemainingChildren(returnFiber, currentFiber);
 					break work;
 				} else {
 					if (__DEV__) {
@@ -73,12 +100,15 @@ function createChildReconciler(shouldTrackEffects: boolean) {
 					}
 				}
 			} else {
-				// 删除旧的, 然后创建新的(和mount一样)
+				// * key不同都走这里处理
+				// key不同, 那么需要删除key不同的child, 然后继续处理其他的 sibling(兄弟), 继续while循环即可
 				deleteChild(returnFiber, currentFiber);
+				currentFiber = currentFiber.sibling;
 			}
 		}
 
 		// --------- mount流程 | 创建新的 ---------
+		// 到此为止, 上面的while走完了, 所有的兄弟也都处理完了, 此时如果走到了这里, 就创建一个新节点
 		// 1. 创建fiber
 		const fiber = createFiberFromElement(element);
 		// 2. 将创建出的fiber的爹指向入参指定的爹
@@ -93,17 +123,20 @@ function createChildReconciler(shouldTrackEffects: boolean) {
 		// 就是内部的文本
 		content: string | number
 	): FiberNode {
-		if (currentFiber !== null) {
+		while (currentFiber !== null) {
 			// update
 			if (currentFiber.tag === HostText) {
 				// 类型没有变, 直接复用
 				const existing = useFiber(currentFiber, { content });
 				existing.return = returnFiber;
+				// 其他兄弟标记为删除
+				deleteRemainingChildren(returnFiber, currentFiber.sibling);
 				return existing;
 			}
 			// currentFiber.tag不再是HostTet, 也就是说类型发生了变化, 需要删除旧的, 然后创建新的
 			// * <div /> -> 123
 			deleteChild(returnFiber, currentFiber);
+			currentFiber = currentFiber.sibling; // 处理兄弟
 		}
 		// 与 reconcileSingleElement 类似
 		// ---- 创建HostText流程 ----

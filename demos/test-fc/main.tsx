@@ -14,15 +14,14 @@ import React, { useState } from 'react';
 import ReactDOM from 'react-dom/client';
 // console.info(import.meta.hot);
 const root = document.querySelector('#root');
-const Child = (props) => {
+const Child = () => {
 	const [count, setCount] = useState(1000);
-	window.setCount = setCount;
-	return count === 3 ? <Child2 /> : <span>{count}</span>;
+	return <div onClick={() => setCount(count + 1)}>{count}</div>;
 };
 
-function Child2() {
-	return <div>big-react</div>;
-}
+// function Child2() {
+// 	return <div>big-react</div>;
+// }
 
 const App = () => (
 	<h1>

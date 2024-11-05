@@ -1,6 +1,7 @@
 {
   "compilerOptions": {
-    "baseUrl": ".",
+    "jsx": "react",
+    "baseUrl": "./packages",
     "strict": true,
     "rootDir": ".",
     "moduleResolution": "node",
@@ -19,15 +20,15 @@
     "lib": ["esnext", "DOM"],
     "types": ["vitest/globals"],
     "paths": {
-      "@mini-react/*": ["packages/*/src"],
-      "mini-react": ["packages/react/src"],
+      "@mini-react/*": ["./*/src"],
+      "mini-react": ["./react/src"],
       // 指向react-dom下的hostConfig
-      "hostConfig": ["packages/react-dom/src/hostConfig"]
+      "hostConfig": ["./react-dom/src/hostConfig"]
     }
   },
-  "include": ["packages/**/*"],
+  "include": ["./**/*"],
   "exclude": [
     "node_modules",
-    "packages/react/example/*"
+    "./react/example/*"
   ]
 }

@@ -1,6 +1,11 @@
 // 用于定义描述DOM宿主环境的api
 
-import { FiberNode, HostText } from '@mini-react/react-reconciler';
+import {
+	FiberNode,
+	HostComponent,
+	HostText
+} from '@mini-react/react-reconciler';
+import { DOMElement, updateFiberProps } from './SyntheticEvent';
 
 // 容器类型
 export type Container = Element;
@@ -8,10 +13,10 @@ export type Instance = Element;
 export type TextInstance = Text;
 
 export const createInstance = (type: string, props: any): Instance => {
-	const element = document.createElement(type);
-	// TODO 处理props
-	console.info(props);
-	return element;
+	const element = document.createElement(type) as unknown;
+	// 处理props
+	updateFiberProps(element as DOMElement, props);
+	return element as Instance;
 };
 
 // 将实例插入
@@ -36,6 +41,10 @@ export function commitUpdate(fiber: FiberNode) {
 		case HostText:
 			const text = fiber.memoizedProps.content;
 			return commitTextUpdate(fiber.stateNode, text);
+		case HostComponent:
+			// update fiber props
+			// updateFiberProps(fiber.stateNode as DOMElement, fiber.memoizedProps);
+			return;
 		default:
 			if (__DEV__) {
 				console.warn('未实现的Update类型', fiber);

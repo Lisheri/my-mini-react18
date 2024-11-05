@@ -17,6 +17,7 @@ import {
 	HostText
 } from './workTags';
 import { NoFlags, Update } from './fiberFlags';
+import { updateFiberProps } from 'react-dom/src/SyntheticEvent';
 
 // 用于标记更新
 function markUpdate(fiber: FiberNode) {
@@ -37,6 +38,12 @@ export const completeWork = (wip: FiberNode) => {
 				// TODO update
 				// 此时 stateNode中保存的就是上一次的DOM节点, 因此这个情况其实就是 "update"
 				// 这里类似 Text 处理, 本质上也是对比属性的变化, 然后标记一个Update, 只是这里要对比所有属性
+				// 1. props是否变化 { onClick: xxx } -> { onClick: xxx2 }
+				// 2. 如果发生变化, 需要一个update flag
+				// TODO 如下实现是不管变化没有, 均执行更新, 但是不会产生太大的性能问题, 因为本身只是一个赋值操作, 但是常规实现应该和上述情况一样, 交给处理 update flag时, 在commit阶段处理props更新
+				// TODO 不应该在此处调用updateFiberProps，应该跟着判断属性变化的逻辑，在这里打flag
+				// TODO 再在commitWork中更新fiberProps，我准备把这个过程留到「属性变化」相关需求一起做
+				updateFiberProps(wip.stateNode, newProps);
 			} else {
 				// mount
 				// 1. 构建DOM
@@ -47,7 +54,8 @@ export const completeWork = (wip: FiberNode) => {
 				// * 对于浏览器, 就是dom节点, 后续均使用dom模拟
 				// ? 由于当前处于 completeWork中, 说明当前创建的这个DOM, 是这个DOM树中最上面的一个
 				// ? 因此需要将剩下的离屏DOM树 wip, 挂载到创建的dom, 也就是instance节点下
-				const instance = createInstance(wip.type!, newProps);
+				// 这里创建了DOMElement并且将props附加到了 DOMElement 上
+				const instance = createInstance(wip.type, newProps);
 				// 2. 将DOM插入到DOM树中
 				appendAllChildren(instance, wip);
 				// ? 挂载完成后, 将instance 赋值给 stateNode
