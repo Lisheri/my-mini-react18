@@ -11,6 +11,7 @@ import {
 } from 'hostConfig';
 import { FiberNode } from './fiber';
 import {
+	Fragment,
 	FunctionComponent,
 	HostComponent,
 	HostRoot,
@@ -87,10 +88,9 @@ export const completeWork = (wip: FiberNode) => {
 			bubbleProperties(wip);
 			return null;
 		case HostRoot:
-			bubbleProperties(wip);
-			return null;
 		case FunctionComponent:
-			// 对于函数组件同样只需要收集flags即可
+		case Fragment:
+			// 对于函数组件、HostRoot以及Fragment同样只需要收集flags即可
 			bubbleProperties(wip);
 			return null;
 		default:

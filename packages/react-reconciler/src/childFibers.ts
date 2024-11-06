@@ -1,12 +1,19 @@
-import { Props, ReactElement, REACT_ELEMENT_TYPE } from '@mini-react/shared';
+import {
+	Key,
+	Props,
+	ReactElement,
+	REACT_ELEMENT_TYPE,
+	REACT_FRAGMENT_TYPE
+} from '@mini-react/shared';
 import { isValidElement } from 'react';
 import {
 	createFiberFromElement,
+	createFiberFromFragment,
 	createWorkInProgress,
 	FiberNode
 } from './fiber';
 import { ChildDeletion, Placement } from './fiberFlags';
-import { HostText } from './workTags';
+import { Fragment, HostText } from './workTags';
 
 type ExistingChildren = Map<string | number, FiberNode>;
 
@@ -83,10 +90,15 @@ function createChildReconciler(shouldTrackEffects: boolean) {
 				if (isValidElement(element)) {
 					// * 1. key相同 type 相同, 复用当前节点, 删除所有旧节点
 					if (currentFiber.type === element.type) {
+						let props = element.props;
+						if (element.type === REACT_FRAGMENT_TYPE) {
+							// 拆开他的 fragment, 对于fragment来说, 他的props就是他的 props.children
+							props = element.props.children;
+						}
 						// type相同, 说明这个节点是同一个节点, 可以复用
 						// 但是这里不需要做任何处理, 因为这个fiber会被返回, 由reconcileChildFibers处理
 						// 新的props在element上
-						const existing = useFiber(currentFiber, element.props);
+						const existing = useFiber(currentFiber, props);
 						existing.return = returnFiber;
 						// 当前节点可复用, 需要标记剩下的节点删除
 						deleteRemainingChildren(returnFiber, currentFiber.sibling); // 当前是复用的, 因此第一个处理节点是他的下一个兄弟
@@ -111,8 +123,14 @@ function createChildReconciler(shouldTrackEffects: boolean) {
 
 		// --------- mount流程 | 创建新的 ---------
 		// 到此为止, 上面的while走完了, 所有的兄弟也都处理完了, 此时如果走到了这里, 就创建一个新节点
-		// 1. 创建fiber
-		const fiber = createFiberFromElement(element);
+		let fiber: FiberNode;
+		if (element.type === REACT_FRAGMENT_TYPE) {
+			// 创建 fragment类型的 fiberNode
+			fiber = createFiberFromFragment(element.props.children, key);
+		} else {
+			// 创建普通的 fiberNode
+			fiber = createFiberFromElement(element);
+		}
 		// 2. 将创建出的fiber的爹指向入参指定的爹
 		fiber.return = returnFiber;
 		// 3. 返回这个fiber(reconcileChildFibers执行完成后, 会将这里返回的fiber挂到returnFiber.child上, 这里不需要进行处理)
@@ -274,7 +292,7 @@ function createChildReconciler(shouldTrackEffects: boolean) {
 		element: any
 	): FiberNode | null {
 		const keyToUse = element.key !== null ? element.key : index;
-		const before = existingChildren.get(keyToUse); // 更新前的fiber
+		const before = existingChildren.get(keyToUse) || null; // 更新前的fiber
 		if (typeof element === 'string' || typeof element === 'number') {
 			// HostText
 			if (before) {
@@ -292,6 +310,18 @@ function createChildReconciler(shouldTrackEffects: boolean) {
 		if (typeof element === 'object' && element !== null) {
 			switch (element.$$typeof) {
 				case REACT_ELEMENT_TYPE:
+					// Fragment节点
+					if (element.type === REACT_FRAGMENT_TYPE) {
+						// 处理fragment
+						return updateFragment(
+							returnFiber,
+							before,
+							element,
+							keyToUse,
+							existingChildren
+						);
+					}
+					// 普通节点
 					if (before) {
 						if (before.type === element.type) {
 							// 可以复用
@@ -299,12 +329,18 @@ function createChildReconciler(shouldTrackEffects: boolean) {
 							return useFiber(before, element.props);
 						}
 					}
-					// TODO Fragment | Array
-					// if (Array.isArray(element) && __DEV__) {
-					// 	console.warn('暂未实现fragment类型的child');
-					// }
 					return createFiberFromElement(element);
 			}
+		}
+		// 数组节点
+		if (Array.isArray(element)) {
+			return updateFragment(
+				returnFiber,
+				before,
+				element,
+				keyToUse,
+				existingChildren
+			);
 		}
 		return null;
 	}
@@ -318,8 +354,20 @@ function createChildReconciler(shouldTrackEffects: boolean) {
 		returnFiber: FiberNode,
 		currentFiber: FiberNode | null,
 		// 子节点
-		newChild?: ReactElement | string | number
+		newChild?: any
 	): FiberNode | null {
+		// 判断fragment
+		const isUnKeyedTopLevelFragment =
+			typeof newChild === 'object' &&
+			newChild !== null &&
+			newChild.type === REACT_FRAGMENT_TYPE &&
+			newChild.key === null;
+
+		if (isUnKeyedTopLevelFragment) {
+			// 针对第一种Fragment, <><div>1</div><div>2</div></>, 直接取出内部元素, 交给children处理
+			// 然后交给 reconcileChildrenArray 处理
+			newChild = newChild?.props.children;
+		}
 		// ? 判断当前fiber的类型
 		if (typeof newChild === 'object' && newChild !== null) {
 			// 单节点情况
@@ -345,24 +393,15 @@ function createChildReconciler(shouldTrackEffects: boolean) {
 				reconcileSingleTextNode(returnFiber, currentFiber, newChild)
 			);
 		}
-		// if (currentFiber !== null) {
-		// 	// 兜底, 对于未实现的 reconcile类型, 直接标记删除
-		// 	deleteChild(returnFiber, currentFiber);
-		// }
 
-		// if (__DEV__) {
-		// 	console.error('未实现的reconcile类型', newChild);
-		// }
+		if (__DEV__) {
+			console.error('未实现的reconcile类型', newChild);
+		}
 		// 其他情况全部视为删除旧的节点
 		deleteRemainingChildren(returnFiber, currentFiber);
 		return null;
 	};
 }
-
-// 追踪副作用(update阶段)
-export const reconcileChildFibers = createChildReconciler(true);
-// 不追踪副作用(mount阶段)
-export const mountChildFibers = createChildReconciler(false);
 
 // 处理复用
 function useFiber(fiber: FiberNode, pendingProps: Props): FiberNode {
@@ -375,3 +414,103 @@ function useFiber(fiber: FiberNode, pendingProps: Props): FiberNode {
 	clone.sibling = null;
 	return clone;
 }
+
+function updateFragment(
+	returnFiber: FiberNode,
+	current: FiberNode | null,
+	elements: any[],
+	key: Key,
+	existingChildren: ExistingChildren
+) {
+	let fiber;
+	if (!current || current.tag !== Fragment) {
+		// 非fragment, 创建新的
+		fiber = createFiberFromFragment(elements, key);
+	} else {
+		// fragment, 复用
+		existingChildren.delete(key);
+		fiber = useFiber(current, elements);
+	}
+	fiber.return = returnFiber;
+	return fiber;
+}
+
+// 追踪副作用(update阶段)
+export const reconcileChildFibers = createChildReconciler(true);
+// 不追踪副作用(mount阶段)
+export const mountChildFibers = createChildReconciler(false);
+
+/*
+  上述方法并不能处理 Fragment
+  分为两种情况
+  1. Fragment包裹其他组件
+  也就是<><div></div><div></div></> 这种情况
+  这种情况需要转换为如下对应的DOM 
+  <div></div>
+  <div></div>
+
+  对应的jsx转换结果为
+  jsx(Fragment {
+    children: [
+      jsx('div', {}),
+      jsx('div', {})
+    ]
+  })
+
+  2. Fragment与其他组件同级
+  <ul>
+    <li>1</li>
+    <li>2</li>
+    <>
+      <li>3</li>
+      <li>4</li>
+    </>
+  </ul>
+
+  转换出来的dom为
+  <ul>
+    <li>1</li>
+    <li>2</li>
+    <li>3</li>
+    <li>4</li>
+  </ul>
+
+  对应的jsx转换结果为
+  jsx('ul', {
+    children: [
+      jsx('li', { children: '1' }),
+      jsx('li', { children: '2' }),
+      jsx(Fragment, {
+        children: [
+          jsx('li', { children: '3' }),
+          jsx('li', { children: '4' })
+        ]
+      })
+    ]
+  })
+
+  3. 数组形式的Fragment
+  const arr = [<li>c</li><li>d</li>]
+  <ul>
+    <li>a</li>
+    <li>b</li>
+    {arr}
+  </ul>
+
+  对应的DOM
+  <ul>
+    <li>a</li>
+    <li>b</li>
+    <li>c</li>
+    <li>d</li>
+  </ul>
+
+  jsx转换结果为
+  jsx('ul', {
+    children: [
+      jsx('li', { children: 'a' }),
+      jsx('li', { children: 'b' }),
+      arr
+    ]
+  })
+*/

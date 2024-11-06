@@ -256,26 +256,46 @@ function insertOrAppendPlacementNodeIntoContainer(
 	}
 }
 
+// 1. 找到第一个 root host 节点
+// 2. 每找到一个host节点, 判断下这个节点是不是 1 找到的节点的兄弟节点（是代表是同级, 记录一下）
+function recordHostChildrenToDelete(
+	childrenToDelete: FiberNode[],
+	unmountFiber: FiberNode
+) {
+	const lastOne = childrenToDelete[childrenToDelete.length - 1]; // 最后一个节点
+	if (!lastOne) {
+		// 当期没有记录过需要删除的节点
+		childrenToDelete.push(unmountFiber);
+	} else {
+		// 代表接下来近来的unmountFiber不是第一个
+		let node = lastOne.sibling;
+		while (node !== null) {
+			if (unmountFiber === node) {
+				// 保证 childrenToDelete数组中全是同一级的
+				childrenToDelete.push(unmountFiber);
+			}
+			node = node.sibling;
+		}
+	}
+}
+
 function commitDeletion(childToDelete: FiberNode) {
 	// 需要递归删除
 	// 假设需要删除一个 <div><App /> 12312 <span><Child /></span></div>
 	// 因此这里删除div时, 实际上是删除这个div的子树
-	let rootHostNode: FiberNode | null = null; // 根hostComponent
+	// let rootHostNode: FiberNode | null = null; // 根hostComponent
+	const rootChildrenToDelete: FiberNode[] = [];
+	// 有可能在一个hostParent下, 有多个根节点(fragment)
 
 	// 递归子树
 	commitNestedComponent(childToDelete, (unmountFiber) => {
 		switch (unmountFiber.tag) {
 			case HostComponent:
-				if (rootHostNode === null) {
-					rootHostNode = unmountFiber;
-				}
+				recordHostChildrenToDelete(rootChildrenToDelete, unmountFiber);
 				// TODO 解绑ref
 				return;
 			case HostText:
-				// 标记第一个HostComponent
-				if (rootHostNode === null) {
-					rootHostNode = unmountFiber;
-				}
+				recordHostChildrenToDelete(rootChildrenToDelete, unmountFiber);
 				return;
 			case FunctionComponent:
 				// TODO useEffect unmount、解绑ref
@@ -289,12 +309,15 @@ function commitDeletion(childToDelete: FiberNode) {
 		}
 	});
 	// 移除 rootHostComponent的DOM
-	if (rootHostNode !== null) {
+	if (rootChildrenToDelete.length) {
 		// 找到hostParent(需要删除的节点的爹)
-		const hostParent = getHostParent(rootHostNode);
-		// 删除当前儿子
-		hostParent &&
-			removeChild((rootHostNode as FiberNode).stateNode, hostParent);
+		const hostParent = getHostParent(childToDelete);
+		if (hostParent) {
+			// 遍历删除所有的需要删除的儿子
+			rootChildrenToDelete.forEach((node) => {
+				removeChild(node.stateNode, hostParent);
+			});
+		}
 	}
 	// 重置标记(因为已经删了， 因此需要从fiberTree中移除对应节点, 让gc回收)
 	childToDelete.return = null;

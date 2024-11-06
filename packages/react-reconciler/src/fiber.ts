@@ -3,7 +3,12 @@
 */
 import type { Key, Props, ReactElement, Ref } from '@mini-react/shared';
 import { Flags, NoFlags } from './fiberFlags';
-import { FunctionComponent, HostComponent, WorkTag } from './workTags';
+import {
+	Fragment,
+	FunctionComponent,
+	HostComponent,
+	WorkTag
+} from './workTags';
 
 // 此处不能写死 hostConfig的路径, 因为 react-reconciler 下的 hostConfig 只是暂时实现
 // 后续还需要做更多的扩展
@@ -59,7 +64,7 @@ export class FiberNode {
 	constructor(tag: WorkTag, pendingProps: Props, key: Key) {
 		// --------------------------- 作为实例属性 start ---------------------------
 		this.tag = tag;
-		this.key = key;
+		this.key = key || null;
 		this.stateNode = null;
 		this.type = null;
 		// --------------------------- 作为实例属性 end ---------------------------
@@ -166,5 +171,10 @@ export function createFiberFromElement(element: ReactElement): FiberNode {
 	const fiber = new FiberNode(fiberTag, props, key);
 	// 对于函数组件来说, 这个type就是组件本身的执行函数
 	fiber.type = type;
+	return fiber;
+}
+
+export function createFiberFromFragment(elements: any[], key: Key): FiberNode {
+	const fiber = new FiberNode(Fragment, elements, key);
 	return fiber;
 }

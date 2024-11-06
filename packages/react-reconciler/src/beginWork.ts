@@ -6,6 +6,7 @@ import { FiberNode } from './fiber';
 import { renderWithHooks } from './fiberHooks';
 import { processUpdateQueue, UpdateQueue } from './updateQueue';
 import {
+	Fragment,
 	FunctionComponent,
 	HostComponent,
 	HostRoot,
@@ -26,6 +27,8 @@ export const beginWork = (wip: FiberNode): FiberNode | null => {
 			return null;
 		case FunctionComponent:
 			return updateFunctionComponent(wip);
+		case Fragment:
+			return updateFragment(wip);
 		default:
 			if (__DEV__) {
 				console.warn(`beginWork未实现类型: ${wip.tag}`);
@@ -33,6 +36,12 @@ export const beginWork = (wip: FiberNode): FiberNode | null => {
 			return null;
 	}
 };
+
+function updateFragment(wip: FiberNode): FiberNode {
+	const nextChildren = wip.pendingProps; // 获取Fragment子节点,
+	reconcileChildren(wip, nextChildren);
+	return wip.child as FiberNode;
+}
 
 /**
  * 处理HostRoot更新

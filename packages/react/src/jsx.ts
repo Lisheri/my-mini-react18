@@ -1,7 +1,8 @@
 import {
 	ElementType,
 	REACT_ELEMENT_TYPE,
-	hasOwnProperty
+	hasOwnProperty,
+	REACT_FRAGMENT_TYPE
 } from '@mini-react/shared';
 import type { Type, Key, Ref, Props, ReactElement } from '@mini-react/shared';
 
@@ -137,6 +138,8 @@ export const jsxDEV = (type: ElementType, config: any): ReactElement => {
 
 	return ReactElement(type, key, ref, props);
 };
+
+export const Fragment = REACT_FRAGMENT_TYPE;
 
 export function isValidElement(elm: any) {
 	// 判断elm是否是一个合法的ReactElement

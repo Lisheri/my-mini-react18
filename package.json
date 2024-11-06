@@ -10,6 +10,7 @@
 		"lint": "lint-staged",
 		"build:dev": "rm -rf ./dist && rollup --bundleConfigAsCjs --config scripts/rollup/dev.config.js",
 		"demo:dev": "vite serve demos/test-fc --config scripts/vite/vite.config.js --force",
+    "demo:fragment": "vite serve demos/fragment --config scripts/vite/vite.config.js --force",
 		"test": "jest --config scripts/jest/jest.config.js"
 	},
 	"keywords": [],
