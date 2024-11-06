@@ -7,6 +7,8 @@ import type { Dispatch } from 'react/src/currentDispatcher';
 export interface Update<State> {
 	// 触发更新的函数
 	action: Action<State>;
+	// 指向新的update
+	next: Update<any> | null;
 }
 
 // ------------------------------- React触发更新的方式 ------------------------------------------
@@ -26,7 +28,8 @@ export interface UpdateQueue<State> {
 // 创建 update
 export const createUpdate = <T>(action: Action<T>): Update<T> => {
 	return {
-		action
+		action,
+		next: null
 	};
 };
 
@@ -47,6 +50,21 @@ export const enqueueUpdate = <State>(
 	updateQueue: UpdateQueue<State>,
 	update: Update<State>
 ) => {
+	const pending = updateQueue.shared.pending;
+	// 这里的pending不应该直接赋值, 而是调整为一个链表
+	// updateQueue.shared.pending = update;
+	if (pending === null) {
+		// 当前还没有插入update
+		// a -> a
+		update.next = update;
+	} else {
+		// 当前的queue中已经存在了update
+		// ? 这里其实还是要保持有一个环状链表, 只是插入了一个新的Update, 因此这个新的Update需要指向头节点, 但是上一个节点(pending), 需要指向这个新的节点
+		// ? pending.next本身就是指向头结点的
+		update.next = pending.next;
+		pending.next = update;
+	}
+	// pending始终指向当前正在处理的update
 	updateQueue.shared.pending = update;
 };
 
