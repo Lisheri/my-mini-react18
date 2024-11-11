@@ -29,5 +29,8 @@ export default defineConfig({
 	},
 	build: {
 		sourcemap: 'inline'
+	},
+	server: {
+		port: 6767
 	}
 });

@@ -10,6 +10,7 @@ import {
 } from './updateQueue';
 import { HostRoot } from './workTags';
 import { scheduleUpdateOnFiber } from './workLoop';
+import { requestUpdateLanes } from './fiberLanes';
 
 // 调用 React.createRoot 以后, 在 createRoot 方法内部就会触发 createContainer
 export function createContainer(container: Container): FiberRootNode {
@@ -33,16 +34,18 @@ export function updateContainer(
 	root: FiberRootNode
 ) {
 	const hostRootFiber = root.current;
+	// 对于首屏渲染时的优先级
+	const lane = requestUpdateLanes();
 	// 首屏渲染触发更新, 首先需要先有一个 update 更新函数
 	// ? 传入 element, 表示这个更新方法是和 element 相关的
 	// ? 在后续的的beginWork和completeWork中就可以处理这个element
-	const update = createUpdate<ReactElement | null>(element);
+	const update = createUpdate<ReactElement | null>(element, lane);
 	// 插入到 hostRootFiber.updateQueue 中
 	enqueueUpdate(
 		hostRootFiber.updateQueue as UpdateQueue<ReactElement | null>,
 		update
 	);
 	// 通过队列调度功能更新
-	scheduleUpdateOnFiber(hostRootFiber);
+	scheduleUpdateOnFiber(hostRootFiber, lane);
 	return element;
 }

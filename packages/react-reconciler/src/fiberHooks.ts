@@ -10,6 +10,7 @@ import {
 } from './updateQueue';
 import { Action } from '@mini-react/shared';
 import { scheduleUpdateOnFiber } from './workLoop';
+import { Lane, NoLane, requestUpdateLanes } from './fiberLanes';
 
 const { currentDispatcher } = internals;
 
@@ -19,6 +20,7 @@ let currentlyRenderingFiber: FiberNode | null = null;
 let workInProgressHook: Hook | null = null;
 // 当前Hook
 let currentHook: Hook | null = null;
+let renderLane: Lane = NoLane;
 
 interface Hook {
 	// * 对于useState, 这个字段代表的是保存的状态, 但是对于其他的hook, 他的意义是不一样的
@@ -27,11 +29,13 @@ interface Hook {
 	next: Hook | null; // 指向下一个Hook
 }
 
-export function renderWithHooks(wip: FiberNode) {
+export function renderWithHooks(wip: FiberNode, lane: Lane) {
 	// 指向正在处理的fiber
 	currentlyRenderingFiber = wip;
 	// 重置 指向的是 hooks链表头节点
 	wip.memoizedState = null;
+
+	renderLane = lane;
 
 	const current = wip.alternate;
 	if (current !== null) {
@@ -51,6 +55,8 @@ export function renderWithHooks(wip: FiberNode) {
 	currentlyRenderingFiber = null;
 	workInProgressHook = null;
 	currentHook = null;
+	// 执行完成后重置
+	renderLane = NoLane;
 	return children;
 }
 
@@ -92,7 +98,8 @@ function updateState<State>(): [State, Dispatch<State>] {
 		// 处理更新队列
 		const { memoizedState } = processUpdateQueue<State>(
 			hook.memoizedState,
-			pending
+			pending,
+			renderLane
 		);
 		hook.memoizedState = memoizedState;
 	}
@@ -111,14 +118,16 @@ function dispatchSetState<State>(
 	updateQueue: UpdateQueue<State>,
 	action: Action<State>
 ) {
+	// 获取当前lane
+	const lane = requestUpdateLanes();
 	// 这个其实和 updateContainer类似
 	// 1. 创建update
-	const update = createUpdate<State>(action);
+	const update = createUpdate<State>(action, lane);
 	// 2. 将update推入updateQueue
 	enqueueUpdate<State>(updateQueue, update);
 	// 3. 队列调度更新(updateContainer是从根节点开始调度, 而这里是从当前fiber开始调度更新)
 	// 内部一个关键逻辑就是从当前节点开始往上查找根节点
-	scheduleUpdateOnFiber(fiber);
+	scheduleUpdateOnFiber(fiber, lane);
 }
 
 // 用于获取当前正在处理的hook对应的数据

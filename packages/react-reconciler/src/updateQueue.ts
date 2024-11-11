@@ -2,6 +2,7 @@
 
 import { Action } from '@mini-react/shared';
 import type { Dispatch } from 'react/src/currentDispatcher';
+import { Lane } from './fiberLanes';
 
 // Update数据结构
 export interface Update<State> {
@@ -9,6 +10,7 @@ export interface Update<State> {
 	action: Action<State>;
 	// 指向新的update
 	next: Update<any> | null;
+	lane: Lane; // 代表update本身的优先级
 }
 
 // ------------------------------- React触发更新的方式 ------------------------------------------
@@ -26,10 +28,11 @@ export interface UpdateQueue<State> {
 }
 
 // 创建 update
-export const createUpdate = <T>(action: Action<T>): Update<T> => {
+export const createUpdate = <T>(action: Action<T>, lane: Lane): Update<T> => {
 	return {
 		action,
-		next: null
+		next: null,
+		lane
 	};
 };
 
@@ -72,28 +75,55 @@ export const enqueueUpdate = <State>(
 // 这个方法接收一个初始状态以及需要消费的update
 export const processUpdateQueue = <State>(
 	baseState: State,
-	pendingUpdate: Update<State> | null
+	pendingUpdate: Update<State> | null,
+	renderLane: Lane
 ): { memoizedState: State } => {
 	const result: ReturnType<typeof processUpdateQueue<State>> = {
 		// 更新完成的状态, fiber也需要
 		memoizedState: baseState
 	};
 
+	// 引入lane之后
+	// 首先需要考虑优先级
+	// update是一条链表, 需要遍历
+
 	// ---------------------- 消费过程 ------------------------------
 	// 有两种消费的情况
 	// 如果pendingUpdate存在
 	if (pendingUpdate !== null) {
-		// baseUpdate: 1, update: 2 -> memoizedState: 2
-		// baseUpdate: 1, update: x => 2 * x -> memoizedState: update(baseUpdate)
-		const action = pendingUpdate.action;
-		if (action instanceof Function) {
-			// action为函数, 对应第二种类型
-			result.memoizedState = action(baseState);
-		} else {
-			// 否则memoizedState 就是 action本身(也就是传入setState的参数)
-			result.memoizedState = action;
-		}
+		// pendingUpdate指向的是环状链表最后一个节点, 因此他的next, 就是头节点
+		const first = pendingUpdate.next;
+		let pending = pendingUpdate as Update<any>;
+		do {
+			const updateLane = pending.lane;
+			// 如果当前的updateLane, 和renderLane一致, 则执行计算
+			if (updateLane === renderLane) {
+				// 执行计算
+				// baseUpdate: 1, update: 2 -> memoizedState: 2
+				// baseUpdate: 1, update: x => 2 * x -> memoizedState: update(baseUpdate)
+				const action = pendingUpdate.action;
+				// 这里不应该直接更新 memoizedState, 而是应该反复的修改baseState, 最后一次进入时, 在同一更新岛 memoizedState上
+				if (action instanceof Function) {
+					// action为函数, 对应第二种类型
+					// result.memoizedState = action(baseState);
+					baseState = action(baseState);
+				} else {
+					// 否则memoizedState 就是 action本身(也就是传入setState的参数)
+					// result.memoizedState = action;
+					baseState = action;
+				}
+			} else {
+				if (__DEV__) {
+					// 当前所有更新, 应该都是syncLane, 没有其他的Lane, 应该是优先级完全一致的
+					console.info('优先级不一致, 跳过更新', updateLane, renderLane);
+				}
+			}
+			// 继续处理下一个
+			pending = pending.next as Update<any>;
+		} while (pending !== first);
 	}
 
+	// 此时 baseState 就是最终的状态
+	result.memoizedState = baseState;
 	return result;
 };

@@ -74,3 +74,13 @@ export function insertChildToContainer(
 	// 往前插入
 	container.insertBefore(child, before);
 }
+
+// 调度逻辑是和宿主环境相关的, 因此应该在宿主环境中实现
+// 如果支持 queueMicrotask, 则直接通过 queueMicrotask构造微任务
+export const scheduleMicroTask =
+	typeof queueMicrotask === 'function'
+		? queueMicrotask
+		: typeof Promise === 'function'
+		? (callback: (...args: any) => void) => Promise.resolve().then(callback)
+		: // 优雅降级, 都不支持, 则使用 setTimeout
+		  setTimeout;

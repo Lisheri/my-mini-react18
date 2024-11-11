@@ -4,6 +4,7 @@ import { ReactElement } from '@mini-react/shared';
 import { mountChildFibers, reconcileChildFibers } from './childFibers';
 import { FiberNode } from './fiber';
 import { renderWithHooks } from './fiberHooks';
+import { Lane } from './fiberLanes';
 import { processUpdateQueue, UpdateQueue } from './updateQueue';
 import {
 	Fragment,
@@ -14,11 +15,14 @@ import {
 } from './workTags';
 
 // ? 核心工作是比较, 最终返回子fiberNode
-export const beginWork = (wip: FiberNode): FiberNode | null => {
+export const beginWork = (
+	wip: FiberNode,
+	renderLane: Lane
+): FiberNode | null => {
 	// 主要工作是ReactElement与当然fiberNode比较, 然后返回 子fiberNode
 	switch (wip.tag) {
 		case HostRoot:
-			return updateHostRoot(wip);
+			return updateHostRoot(wip, renderLane);
 		case HostComponent:
 			return updateHostComponent(wip);
 		case HostText:
@@ -26,7 +30,7 @@ export const beginWork = (wip: FiberNode): FiberNode | null => {
 			// 同时递归阶段的递阶段, 主要就是递倒了叶子节点, 然后就不能继续往下了, 也就是需要开启"归"阶段
 			return null;
 		case FunctionComponent:
-			return updateFunctionComponent(wip);
+			return updateFunctionComponent(wip, renderLane);
 		case Fragment:
 			return updateFragment(wip);
 		default:
@@ -48,8 +52,9 @@ function updateFragment(wip: FiberNode): FiberNode {
  * 1. 计算状态最新值
  * 2. 创建子fiberNode
  * @param wip workInProgress 当前处理的FiberNode节点
+ * @param renderLane 代表本次更新的lane
  */
-function updateHostRoot(wip: FiberNode): FiberNode {
+function updateHostRoot(wip: FiberNode, renderLane: Lane): FiberNode {
 	// 初始状态下 memoizedState 为null
 	const baseState = wip.memoizedState;
 	const updateQueue = wip.updateQueue as UpdateQueue<ReactElement>;
@@ -59,7 +64,7 @@ function updateHostRoot(wip: FiberNode): FiberNode {
 	// ? 因为计算完以后, 这些pending都会出队, 已经没有用了
 	updateQueue.shared.pending = null;
 	// 获取最新的 memoizedState, 对于 ReactElement来说, 这个 memoizedState 其实就是传入的 ReactElement
-	const { memoizedState } = processUpdateQueue(baseState, pending);
+	const { memoizedState } = processUpdateQueue(baseState, pending, renderLane);
 
 	// 更新最新状态
 	wip.memoizedState = memoizedState;
@@ -79,8 +84,8 @@ function updateHostComponent(wip: FiberNode): FiberNode {
 	return wip.child as FiberNode;
 }
 
-function updateFunctionComponent(wip: FiberNode): FiberNode {
-	const nextChildren = renderWithHooks(wip);
+function updateFunctionComponent(wip: FiberNode, renderLane: Lane): FiberNode {
+	const nextChildren = renderWithHooks(wip, renderLane);
 	/*
     假设存在一个FC, 如下
     function App() {

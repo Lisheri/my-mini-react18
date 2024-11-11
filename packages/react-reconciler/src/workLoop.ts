@@ -1,23 +1,35 @@
+import { scheduleMicroTask } from 'hostConfig';
 import { beginWork } from './beginWork';
 import { commitMutationEffects } from './commitWork';
 import { completeWork } from './completeWork';
 import { createWorkInProgress, FiberNode, FiberRootNode } from './fiber';
 import { MutationMask, NoFlags } from './fiberFlags';
+import {
+	getHighestPriorityLane,
+	Lane,
+	markRootFinished,
+	mergeLanes,
+	NoLane,
+	SyncLane
+} from './fiberLanes';
+import { flushSyncCallbacks, scheduleSyncCallback } from './syncTaskQueue';
 import { HostRoot } from './workTags';
 
 // 全局指针指向正在工作的 fiberNode
 let workInProgress: FiberNode | null;
-
+let wipRootRenderLane: Lane = NoLane; // 本次更新时的lane
 // * 用于执行初始化的操作
-function prepareRefreshStack(root: FiberRootNode) {
+function prepareRefreshStack(root: FiberRootNode, lane: Lane) {
 	// FiberRootNode不是普通Fiber, 不能直接作为 workInProgress
 	workInProgress = createWorkInProgress(root.current, {});
+	wipRootRenderLane = lane;
 }
 
 // 用于连接 updateContainer与renderRoot
 // ? 本质上是在fiber中调度update
 // ? 在调用 React.createRoot的过程中, 首次触发 scheduleUpdateOnFiber, 传入的就是 hostRootFiber
-export function scheduleUpdateOnFiber(fiber: FiberNode) {
+// 增加lane, 确认优先级
+export function scheduleUpdateOnFiber(fiber: FiberNode, lane: Lane) {
 	// TODO 调度功能
 	// ? 对于入口来说, fiber是hostRootFiber, 但是对于其他的更新流程, 传入的fiber就是当前组件对应的fiber
 	// ? 组件对应的 ComponentFiber 更新, 需要回到根节点, 再往下查找
@@ -25,7 +37,42 @@ export function scheduleUpdateOnFiber(fiber: FiberNode) {
 	// ? 所以核心在于获取 FiberRootNode
 	const root = markUpdateFromFiberToRoot(fiber);
 	// 然后从根节点开始更新流程
-	renderRoot(root as FiberRootNode);
+	// schedule阶段需要记录当前 lane 到 fiberRootNode中
+	markRootUpdated(root as FiberRootNode, lane);
+	// renderRoot(root as FiberRootNode);
+	// 调度阶段入口
+	ensureRootInScheduled(root as FiberRootNode);
+}
+
+// 保证root被调度, 作为调度阶段的入口
+function ensureRootInScheduled(root: FiberRootNode) {
+	// 1. 实现判断机制, 选出最高优先级的lane
+	// 最右边的位就是优先级最高的lane
+	const updateLane = getHighestPriorityLane(root.pendingLanes);
+	if (updateLane === NoLane) {
+		// 代表没有lane
+		return;
+	}
+
+	if (updateLane === SyncLane) {
+		// 同步优先级 用微任务调度
+		if (__DEV__) {
+			console.info('在微任务中调度 优先级是 ', updateLane);
+		}
+		// 调度的任务其实就是 renderRoot
+		// 将同步阶段的调度函数加入队列
+		scheduleSyncCallback(performSyncWorkOnRoot.bind(null, root, updateLane));
+		// 触发调度
+		scheduleMicroTask(flushSyncCallbacks);
+	} else {
+		// 其他优先级, 用宏任务调度(类似Vue的框架均只有微任务调度, 没有宏任务调度的逻辑)
+	}
+	// 2. 实现类似防抖、节流的效果, 合并微任务中触发的更新
+	// TODO 宏任务合并
+}
+
+function markRootUpdated(root: FiberRootNode, lane: Lane) {
+	root.pendingLanes = mergeLanes(root.pendingLanes, lane);
 }
 
 // 向上查找根fiber, 也就是fiberRootNode
@@ -49,10 +96,19 @@ function markUpdateFromFiberToRoot(fiber: FiberNode): FiberRootNode | null {
 
 // renderRoot 主要用于开启更新
 // 调用 renderRoot 应当是触发更新的API
-function renderRoot(root: FiberRootNode) {
+// 修改 renderRoot为 performSyncWorkOnRoot, 用于区分后续并发更新时的 入口
+// 当前是同步更新入口
+function performSyncWorkOnRoot(root: FiberRootNode, lane: Lane) {
+	const nextLane = getHighestPriorityLane(root.pendingLanes);
+	if (nextLane !== SyncLane) {
+		// 1.其他比 syncLane低的优先级
+		// 2.NoLane
+		ensureRootInScheduled(root); // 这里面如果遇到其他更低优先级的调度, 则会重新调度
+		return;
+	}
 	// 初始化, 让 workInProgress 指向第一个遍历的FiberNode
 	// ? 深度优先(先序遍历), 把root丢进去初始化
-	prepareRefreshStack(root);
+	prepareRefreshStack(root, lane);
 	// 进行首次循环
 	do {
 		try {
@@ -75,7 +131,9 @@ function renderRoot(root: FiberRootNode) {
 	// ? 此时 wip 已经处理完成了
 	const finishedWork = root.current.alternate;
 	root.finishedWork = finishedWork;
-
+	root.finishedLane = lane; // 保存本次更新消费过的lane
+	// 本次更新结束, 恢复
+	wipRootRenderLane = NoLane;
 	// 根据 wip fiberNode 树中的flags执行首屏渲染操作
 	// commit流程入口
 	commitRoot(root);
@@ -95,8 +153,17 @@ function commitRoot(root: FiberRootNode) {
 		console.warn('commit阶段开始', finishedWork);
 	}
 
+	const lane = root.finishedLane;
+
+	if (lane === NoLane && __DEV__) {
+		console.error('commit阶段finishedLane不应该是NoLane!');
+	}
+
 	// 2. 重置(此时已经暂存到了 finishedWork 中)
 	root.finishedWork = null;
+	root.finishedLane = NoLane;
+	// 从root.pendingLanes中移除当前lane(当前lane已经处理完成)
+	markRootFinished(root, lane);
 
 	// 3. 判断是否存在3个子阶段需要执行的操作
 	const subTreeHasEffect =
@@ -135,7 +202,7 @@ function performUnitOfWork(fiber: FiberNode) {
 	// next是这个fiberNode的子fiberNode
 	// 如果next没有了就是null, 那么说明没有子fiber
 	// 这个过程就是JSX消费的第一步: fiber有儿子, 遍历儿子
-	const next = beginWork(fiber);
+	const next = beginWork(fiber, wipRootRenderLane);
 	// fiber中有个字段叫pendingProps, 也就是工作前的props
 	// 工作后props保存到了memoizedProps中(beginWork工作结束其实就是同步完成了)
 	fiber.memoizedProps = fiber.pendingProps;

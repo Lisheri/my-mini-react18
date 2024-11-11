@@ -13,6 +13,7 @@ import {
 // 此处不能写死 hostConfig的路径, 因为 react-reconciler 下的 hostConfig 只是暂时实现
 // 后续还需要做更多的扩展
 import type { Container } from 'hostConfig';
+import { Lane, Lanes, NoLane, NoLanes } from './fiberLanes';
 
 export class FiberNode {
 	// ? FiberNode的标签类型
@@ -111,6 +112,12 @@ export class FiberRootNode {
 	public current: FiberNode;
 	// ? 指向更新完成后的 hostRootFiber(递归更新完成)
 	public finishedWork: FiberNode | null;
+
+	// 所有没有被消费的lane的集合
+	public pendingLanes: Lanes = NoLanes;
+
+	// 本次更新消费的lane
+	public finishedLane: Lane = NoLane;
 
 	constructor(container: Container, hostRootFiber: FiberNode) {
 		this.container = container;

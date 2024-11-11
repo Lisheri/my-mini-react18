@@ -22,7 +22,13 @@ const Child = () => {
 			: [<li key="6">3</li>, <li key="2">2</li>, <li key="4">1</li>];
 	// return <ul onClick={() => setCount(count + 1)}>{arr}</ul>;
 	return (
-		<ul onClickCapture={() => setCount(count + 1)}>
+		<ul
+			onClickCapture={() => {
+				setCount((count) => count + 1);
+				setCount((count) => count + 1);
+				setCount((count) => count + 1);
+			}}
+		>
 			<li>1</li>
 			<li>2</li>
 			<>
@@ -30,6 +36,7 @@ const Child = () => {
 				<li>4</li>
 			</>
 			{arr}
+      {count}
 		</ul>
 	);
 };
