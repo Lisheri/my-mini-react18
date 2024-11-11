@@ -93,6 +93,8 @@ function updateState<State>(): [State, Dispatch<State>] {
 	// 2. 计算新的state
 	const queue = hook.updateQueue as UpdateQueue<State>;
 	const pending = queue.shared.pending;
+	// 置空, 此时pendingUpdate已经被消费完成
+	queue.shared.pending = null;
 
 	if (pending !== null) {
 		// 处理更新队列

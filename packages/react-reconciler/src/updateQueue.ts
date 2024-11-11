@@ -92,10 +92,10 @@ export const processUpdateQueue = <State>(
 	// 如果pendingUpdate存在
 	if (pendingUpdate !== null) {
 		// pendingUpdate指向的是环状链表最后一个节点, 因此他的next, 就是头节点
-		const first = pendingUpdate.next;
-		let pending = pendingUpdate as Update<any>;
+		let first = pendingUpdate.next as Update<any>;
+		const pending = pendingUpdate.next as Update<any>;
 		do {
-			const updateLane = pending.lane;
+			const updateLane = first.lane;
 			// 如果当前的updateLane, 和renderLane一致, 则执行计算
 			if (updateLane === renderLane) {
 				// 执行计算
@@ -119,7 +119,7 @@ export const processUpdateQueue = <State>(
 				}
 			}
 			// 继续处理下一个
-			pending = pending.next as Update<any>;
+			first = first.next as Update<any>;
 		} while (pending !== first);
 	}
 
