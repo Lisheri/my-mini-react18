@@ -14,6 +14,7 @@ import {
 // 后续还需要做更多的扩展
 import type { Container } from 'hostConfig';
 import { Lane, Lanes, NoLane, NoLanes } from './fiberLanes';
+import { Effect } from './fiberHooks';
 
 export class FiberNode {
 	// ? FiberNode的标签类型
@@ -102,6 +103,11 @@ export class FiberNode {
 	}
 }
 
+export interface PendingPassiveEffects {
+	unmount: Effect[];
+	update: Effect[];
+}
+
 // 应用入口对应的FiberNode
 export class FiberRootNode {
 	// ? 对应宿主环境的挂载点, 也就是 rootElement, 使用中常用的 <div id="app"></div>
@@ -119,12 +125,19 @@ export class FiberRootNode {
 	// 本次更新消费的lane
 	public finishedLane: Lane = NoLane;
 
+	public pendingPassiveEffects: PendingPassiveEffects;
+
 	constructor(container: Container, hostRootFiber: FiberNode) {
 		this.container = container;
 		this.current = hostRootFiber;
 		// hostRootFiber 通过 stateNode 与 FiberRootNode 建立连接
 		hostRootFiber.stateNode = this;
 		this.finishedWork = null;
+		// 收集回调的容器
+		this.pendingPassiveEffects = {
+			unmount: [],
+			update: []
+		};
 	}
 }
 

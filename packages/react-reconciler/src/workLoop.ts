@@ -1,9 +1,19 @@
 import { scheduleMicroTask } from 'hostConfig';
 import { beginWork } from './beginWork';
-import { commitMutationEffects } from './commitWork';
+import {
+	commitHookEffectListCreate,
+	commitHookEffectListDestroy,
+	commitHookEffectListUnmount,
+	commitMutationEffects
+} from './commitWork';
 import { completeWork } from './completeWork';
-import { createWorkInProgress, FiberNode, FiberRootNode } from './fiber';
-import { MutationMask, NoFlags } from './fiberFlags';
+import {
+	createWorkInProgress,
+	FiberNode,
+	FiberRootNode,
+	PendingPassiveEffects
+} from './fiber';
+import { MutationMask, NoFlags, PassiveMask } from './fiberFlags';
 import {
 	getHighestPriorityLane,
 	Lane,
@@ -14,10 +24,18 @@ import {
 } from './fiberLanes';
 import { flushSyncCallbacks, scheduleSyncCallback } from './syncTaskQueue';
 import { HostRoot } from './workTags';
+import {
+	// 调度回调函数
+	unstable_scheduleCallback as scheduleCallback,
+	// 优先级
+	unstable_NormalPriority as NormalPriority
+} from 'scheduler';
+import { HookHasEffect, Passive } from './hookEffectTags';
 
 // 全局指针指向正在工作的 fiberNode
 let workInProgress: FiberNode | null;
 let wipRootRenderLane: Lane = NoLane; // 本次更新时的lane
+let rootDoesHasPassiveEffects = false; // 是否正在调度副作用
 // * 用于执行初始化的操作
 function prepareRefreshStack(root: FiberRootNode, lane: Lane) {
 	// FiberRootNode不是普通Fiber, 不能直接作为 workInProgress
@@ -165,6 +183,25 @@ function commitRoot(root: FiberRootNode) {
 	// 从root.pendingLanes中移除当前lane(当前lane已经处理完成)
 	markRootFinished(root, lane);
 
+	// 判断是否需要执行副作用
+	// 和微任务调度类似, 调度useEffect也需要阻止多次调度
+	if (
+		(finishedWork.flags & PassiveMask) !== NoFlags ||
+		(finishedWork.subTressFlags & PassiveMask) !== NoFlags
+	) {
+		// 当前fiber tree上存在副作用, 需要执行useEffect回调
+		if (!rootDoesHasPassiveEffects) {
+			rootDoesHasPassiveEffects = true;
+			// 调度副作用
+			// 调度一个回调函数, 此时需要确认一个优先级（回调函数的触发, 类似 setTimeout, 是一个异步的过程）
+			scheduleCallback(NormalPriority, () => {
+				// 执行副作用
+				flushPassiveEffects(root.pendingPassiveEffects);
+				return;
+			});
+		}
+	}
+
 	// 3. 判断是否存在3个子阶段需要执行的操作
 	const subTreeHasEffect =
 		(finishedWork.subTressFlags & MutationMask) !== NoFlags;
@@ -178,7 +215,7 @@ function commitRoot(root: FiberRootNode) {
 		// * 突变是一种操作UI的方式, 指的是将一个属性的一个值变为另一个值, 比如domAPI的操作, 均为突变
 		// ? Placement对应的操作核心就在mutation阶段
 		// * 传入当前处理完的 wip, 进入mutation逻辑
-		commitMutationEffects(finishedWork);
+		commitMutationEffects(finishedWork, root);
 		// root.current 指向的fiber tree 就是 current fiber tree, 也就是 hostRootFiber
 		// 而 finishedWork是本次更新生成的fiber tree, 也就是wip
 		// 此时wip已经处理完成, 因此这里直接更新current即可(还是双缓冲机制)
@@ -189,6 +226,39 @@ function commitRoot(root: FiberRootNode) {
 		// 同样的, 不管fiber树上是否存在需要更新插入删除的节点, 都需要更改current tree, 指向上一次的wip
 		root.current = finishedWork;
 	}
+
+	// commit阶段执行完成后, 重置标志变量 rootDoesHasPassiveEffects
+	rootDoesHasPassiveEffects = false;
+	// 重新调度root
+	ensureRootInScheduled(root);
+}
+
+// 执行副作用
+function flushPassiveEffects(pendingPassiveEffects: PendingPassiveEffects) {
+	// 1. 先执行所有的unmount回调
+	pendingPassiveEffects.unmount.forEach((effect) => {
+		// 接下来执行的都是useEffect的回调
+		commitHookEffectListUnmount(Passive, effect);
+		// 如果要处理useLayoutEffect, 则直接修改flag即可
+	});
+	// 执行完成后, 需要对上一次的进行清理
+	pendingPassiveEffects.unmount = [];
+
+	// 2. 接着触发所有上次更新的destroy回调
+	pendingPassiveEffects.update.forEach((effect) => {
+		// 他必须是Passive的, 同时还得标记有HookHasEffect(被卸载的组件, HookHasEffect已经被移除了)
+		commitHookEffectListDestroy(Passive | HookHasEffect, effect);
+	});
+
+	// 3. 触发所有这次更新的create回调(因为create必须在所有上一次的destroy执行完之后才能执行, 因此这里必须要重新遍历一次)
+	pendingPassiveEffects.update.forEach((effect) => {
+		commitHookEffectListCreate(Passive | HookHasEffect, effect);
+	});
+	// 清理
+	pendingPassiveEffects.update = [];
+	// 由于在回调执行的过程中, 可能还存在嵌套的 setState在调用, 因此这里还需要调度一次
+	// 继续处理调度流程(处理setState)
+	flushSyncCallbacks();
 }
 
 function workLoop() {
