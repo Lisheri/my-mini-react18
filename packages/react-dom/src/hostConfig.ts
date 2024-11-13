@@ -42,8 +42,9 @@ export function commitUpdate(fiber: FiberNode) {
 			const text = fiber.memoizedProps.content;
 			return commitTextUpdate(fiber.stateNode, text);
 		case HostComponent:
+			// 处理 fiber props更新
 			// update fiber props
-			// updateFiberProps(fiber.stateNode as DOMElement, fiber.memoizedProps);
+			updateFiberProps(fiber.stateNode as DOMElement, fiber.memoizedProps);
 			return;
 		default:
 			if (__DEV__) {

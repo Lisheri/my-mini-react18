@@ -3,21 +3,25 @@ import currentDispatcher, {
 	resolveDispatcher,
 	Dispatcher
 } from './src/currentDispatcher';
-export { isValidElement } from './src/jsx';
 // 暴露hooks
-export const useState: Dispatcher['useState'] = <T>(
+export function useState<T>(
 	initialState: (() => T) | T
-) => {
+): ReturnType<Dispatcher['useState']> {
 	// 通过 resolveDispatcher就可以实现从 react -> hooks 的连接
 	// 后续会通过 resolveDispatcher 来获取到当前的hooks集合, 以及切换不同的hooks集合
 	const dispatcher = resolveDispatcher();
-	return dispatcher.useState<T>(initialState);
-};
+	return dispatcher.useState<T>(initialState) as ReturnType<
+		Dispatcher['useState']
+	>;
+}
 
-export const useEffect: Dispatcher['useEffect'] = (create, deps) => {
+export function useEffect(
+	create: () => void | (() => void),
+	deps: any[]
+): void {
 	const dispatcher = resolveDispatcher();
 	return dispatcher.useEffect(create, deps);
-};
+}
 
 // 数据共享层(内部数据你别动, 动了就会被炒)
 export const __SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED = {
@@ -33,3 +37,5 @@ export default {
 	// react.createElement, 虽然在17以后, jsx编译都是直接使用jsx方法
 	createElement: jsx
 };
+
+export { isValidElement } from './src/jsx';

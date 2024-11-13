@@ -7,7 +7,8 @@ import {
 	Container,
 	appendInitialChild,
 	createInstance,
-	createTextInstance
+	createTextInstance,
+	Instance
 } from 'hostConfig';
 import { FiberNode } from './fiber';
 import {
@@ -18,7 +19,6 @@ import {
 	HostText
 } from './workTags';
 import { NoFlags, Update } from './fiberFlags';
-import { updateFiberProps } from 'react-dom/src/SyntheticEvent';
 
 // 用于标记更新
 function markUpdate(fiber: FiberNode) {
@@ -44,7 +44,10 @@ export const completeWork = (wip: FiberNode) => {
 				// TODO 如下实现是不管变化没有, 均执行更新, 但是不会产生太大的性能问题, 因为本身只是一个赋值操作, 但是常规实现应该和上述情况一样, 交给处理 update flag时, 在commit阶段处理props更新
 				// TODO 不应该在此处调用updateFiberProps，应该跟着判断属性变化的逻辑，在这里打flag
 				// TODO 再在commitWork中更新fiberProps，我准备把这个过程留到「属性变化」相关需求一起做
-				updateFiberProps(wip.stateNode, newProps);
+
+				// TODO 调用markUpdate正常应该先判断是否变化, 但是这里主要需要处理打包的问题, 因此选择直接标记update
+				markUpdate(wip);
+				// updateFiberProps(wip.stateNode, newProps);
 			} else {
 				// mount
 				// 1. 构建DOM
@@ -111,7 +114,7 @@ export const completeWork = (wip: FiberNode) => {
 // ? 如果往下到头了, 则从最底下开始, 处理兄弟
 // ? 兄弟处理完成后, 就往上找
 // ? 整个流程其实和更新流程一样, 是一个递归的过程
-function appendAllChildren(parent: Container, wip: FiberNode) {
+function appendAllChildren(parent: Container | Instance, wip: FiberNode) {
 	let node = wip.child;
 	// 需要应对更加复杂的情况, 比如说A是一个Fragment, 因此需要循环处理, 直到node为null, 或者node为wip了
 	while (node !== null) {

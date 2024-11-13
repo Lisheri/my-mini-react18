@@ -1,63 +1,65 @@
 {
-	"name": "mini-react",
-	"version": "1.0.0",
-	"description": "",
-	"main": "index.js",
-	"scripts": {
-		"eslint": "eslint packages --ext .ts,.jsx,.tsx,.js --fix --quiet",
-		"prettier": "prettier --write .",
-		"prepare": "husky install",
-		"lint": "lint-staged",
-		"build:dev": "rm -rf ./dist && rollup --bundleConfigAsCjs --config scripts/rollup/dev.config.js",
-		"demo:dev": "vite serve demos/test-fc --config scripts/vite/vite.config.js --force",
-		"demo:fragment": "vite serve demos/fragment --config scripts/vite/vite.config.js --force",
+  "name": "mini-react",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "eslint": "eslint packages --ext .ts,.jsx,.tsx,.js --fix --quiet",
+    "prettier": "prettier --write .",
+    "prepare": "husky install",
+    "lint": "lint-staged",
+    "build:dev": "rm -rf ./dist && rollup --bundleConfigAsCjs --config scripts/rollup/dev.config.js",
+    "demo:dev": "vite serve demos/test-fc --config scripts/vite/vite.config.js --force",
+    "demo:fragment": "vite serve demos/fragment --config scripts/vite/vite.config.js --force",
     "demo:effect": "vite serve demos/effect --config scripts/vite/vite.config.js --force",
-		"test": "jest --config scripts/jest/jest.config.js"
-	},
-	"keywords": [],
-	"author": "",
-	"license": "ISC",
-	"devDependencies": {
-		"@commitlint/cli": "^17.4.4",
-		"@commitlint/config-conventional": "^17.4.4",
-		"@rollup/plugin-alias": "^5.0.0",
-		"@rollup/plugin-commonjs": "^24.0.1",
-		"@swc/core": "^1.7.42",
-		"@swc/jest": "^0.2.37",
-		"@types/react": "^18.3.11",
-		"@types/react-dom": "^18.3.1",
-		"@types/scheduler": "^0.23.0",
-		"@typescript-eslint/eslint-plugin": "^5.53.0",
-		"@typescript-eslint/parser": "^5.53.0",
-		"@vitejs/plugin-react-swc": "^3.5.0",
-		"commitlint": "^17.4.4",
-		"eslint": "^8.34.0",
-		"eslint-config-prettier": "^8.6.0",
-		"eslint-plugin,": "link:@typescript-eslint/eslint-plugin,",
-		"eslint-plugin-prettier": "^4.2.1",
-		"globals": "^15.11.0",
-		"husky": "^8.0.3",
-		"jest": "29.7.0",
-		"jest-config": "29.7.0",
-		"jest-environment-jsdom": "29.7.0",
-		"lint-staged": "^13.1.2",
-		"prettier": "^2.8.4",
-		"rimraf": "^5.0.1",
-		"rollup": "^3.17.3",
-		"rollup-plugin-generate-package-json": "^3.2.0",
-		"rollup-plugin-typescript2": "^0.34.1",
-		"typescript": "^4.9.5",
-		"vite": "^5.4.9",
-		"vitest": "^0.29.1"
-	},
-	"lint-staged": {
-		"packages/**/*.{js,jsx,ts,tsx}": [
-			"prettier --write",
-			"eslint packages --ext .ts,.jsx,.tsx,.js --fix --quiet",
-			"git add"
-		]
-	},
-	"dependencies": {
-		"scheduler": "^0.23.2"
-	}
+    "demo:noop-renderer": "vite serve demos/noop-renderer --config scripts/vite/vite.config.js --force -- --noop-renderer",
+    "test": "jest --config scripts/jest/jest.config.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@commitlint/cli": "^17.4.4",
+    "@commitlint/config-conventional": "^17.4.4",
+    "@rollup/plugin-alias": "^5.0.0",
+    "@rollup/plugin-commonjs": "^24.0.1",
+    "@swc/core": "^1.7.42",
+    "@swc/jest": "^0.2.37",
+    "@types/react": "^18.3.11",
+    "@types/react-dom": "^18.3.1",
+    "@types/scheduler": "^0.23.0",
+    "@typescript-eslint/eslint-plugin": "^5.53.0",
+    "@typescript-eslint/parser": "^5.53.0",
+    "@vitejs/plugin-react-swc": "^3.5.0",
+    "commitlint": "^17.4.4",
+    "eslint": "^8.34.0",
+    "eslint-config-prettier": "^8.6.0",
+    "eslint-plugin,": "link:@typescript-eslint/eslint-plugin,",
+    "eslint-plugin-prettier": "^4.2.1",
+    "globals": "^15.11.0",
+    "husky": "^8.0.3",
+    "jest": "^28.1.2",
+		"jest-config": "^28.1.2",
+		"jest-environment-jsdom": "^28.1.2",
+    "jest-react": "0.14.0",
+    "lint-staged": "^13.1.2",
+    "prettier": "^2.8.4",
+    "rimraf": "^5.0.1",
+    "rollup": "^3.17.3",
+    "rollup-plugin-generate-package-json": "^3.2.0",
+    "rollup-plugin-typescript2": "^0.34.1",
+    "typescript": "^4.9.5",
+    "vite": "^5.4.9",
+    "vitest": "^0.29.1"
+  },
+  "lint-staged": {
+    "packages/**/*.{js,jsx,ts,tsx}": [
+      "prettier --write",
+      "eslint packages --ext .ts,.jsx,.tsx,.js --fix --quiet",
+      "git add"
+    ]
+  },
+  "dependencies": {
+    "scheduler": "0.23.0"
+  }
 }

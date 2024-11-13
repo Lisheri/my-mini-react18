@@ -56,7 +56,7 @@ export const jsx = (
 ): ReactElement => {
 	// config 中有 key 和 ref需要单独处理
 	let key: Key = null;
-	const props: Props = {};
+	const props: any = {};
 	let ref: Ref = null;
 	// 处理config上的属性, 均赋值给 props对象, 同时更新 key 和 ref
 	for (const prop in config) {
@@ -101,7 +101,7 @@ export const jsx = (
 export const jsxDEV = (type: ElementType, config: any): ReactElement => {
 	// config 中有 key 和 ref需要单独处理
 	let key: Key = null;
-	const props: Props = {};
+	const props: any = {};
 	let ref: Ref = null;
 	for (const prop in config) {
 		// 将所有的值赋值给 props对象

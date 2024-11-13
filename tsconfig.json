@@ -17,6 +17,7 @@
     "preserveConstEnums": true,
     "sourceMap": true,
     "downlevelIteration": true,
+    "skipLibCheck": true,
     "lib": ["esnext", "DOM"],
     "types": ["vitest/globals"],
     "paths": {
