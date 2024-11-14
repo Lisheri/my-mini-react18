@@ -1,0 +1,20 @@
+span {
+	word-break: break-all;
+	content-visibility: auto;
+}
+
+.pri-1 {
+	color: greenyellow;
+}
+
+.pri-2 {
+	color: pink;
+}
+
+.pri-3 {
+	color: lightblue;
+}
+
+.pri-4 {
+	color: black;
+}
