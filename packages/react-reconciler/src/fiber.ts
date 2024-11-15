@@ -15,6 +15,7 @@ import {
 import type { Container } from 'hostConfig';
 import { Lane, Lanes, NoLane, NoLanes } from './fiberLanes';
 import { Effect } from './fiberHooks';
+import { CallbackNode } from 'scheduler';
 
 export class FiberNode {
 	// ? FiberNode的标签类型
@@ -127,12 +128,19 @@ export class FiberRootNode {
 
 	public pendingPassiveEffects: PendingPassiveEffects;
 
+	// 保存调度的回调函数
+	public callbackNode: CallbackNode | null;
+	public callbackPriority: Lane;
+
 	constructor(container: Container, hostRootFiber: FiberNode) {
 		this.container = container;
 		this.current = hostRootFiber;
 		// hostRootFiber 通过 stateNode 与 FiberRootNode 建立连接
 		hostRootFiber.stateNode = this;
 		this.finishedWork = null;
+
+		this.callbackNode = null;
+		this.callbackPriority = NoLane;
 		// 收集回调的容器
 		this.pendingPassiveEffects = {
 			unmount: [],

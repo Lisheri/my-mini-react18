@@ -295,3 +295,15 @@ Update 的优先级来自于 `RequestUpdateLanes`, 对应的位置一个函数�
 
 + laneToSchedulerPriority
 + schedulerPriorityToLane
+
+## 扩展调度阶段
+
+主要是在同步更新(微任务调度)的技术侧行扩展并发更新(scheduler调度), 主要包括
++ 将demo中的调度策略移到项目中
++ render阶段变为「可中断」
+
+梳理两种典型场景:
++ 时间切片
++ 高优先级更新打断低优先级更新
+
+## 扩展state计算机制
