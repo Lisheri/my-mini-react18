@@ -1,12 +1,25 @@
+import {
+	unstable_getCurrentPriorityLevel,
+	unstable_IdlePriority,
+	unstable_ImmediatePriority,
+	unstable_NormalPriority,
+	unstable_UserBlockingPriority
+} from 'scheduler';
 import { FiberRootNode } from './fiber';
 
 export type Lane = number; // 所谓的Lane, 其实就是一个二进制的数字
 export type Lanes = number; // 一组Lane, 作为Lane的集合
 
-export const SyncLane: Lane = 0b001; // 同步Lane
-export const NoLane: Lane = 0b000; // 无优先级Lane
+// 只要不是NoLane, 那么数值越低, 优先级越高（1越是靠右， 越是优先级搞）
+export const SyncLane: Lane = 0b0001; // 同步Lane
+// ? 比如说拖拽, 对于用户就是个连续输入
+export const InputContinuousLane = 0b0010; // 输入连续Lane
+export const DefaultLane = 0b0100;
+export const IdleLane = 0b1000;
+// 这里还需要增加更多的优先级, 对应Scheduler的五种优先级
+export const NoLane: Lane = 0b0000; // 无优先级Lane
 
-export const NoLanes: Lanes = 0b000; // 初始状态的集合
+export const NoLanes: Lanes = 0b0000; // 初始状态的集合
 
 export function mergeLanes(laneA: Lane, laneB: Lane): Lanes {
 	// 这样就可以合并两个lane并且获得他们的集合
@@ -17,7 +30,11 @@ export function requestUpdateLanes(): Lanes {
 	// 当前我们只有一个SyncLane, 所以直接返回
 	// 但是这里后续可以继续扩展, 为不同的事件产生不同优先级更新做准备
 	// 这里可以根据触发情况不同, 返回不同的Lane
-	return SyncLane;
+	// 这里需要从上下文环境中获取 Scheduler 优先级
+	const currentSchedulerPriorityLevel = unstable_getCurrentPriorityLevel();
+	// 将上下文的scheduler优先级转换为lane
+	const lane = schedulerPriorityToLane(currentSchedulerPriorityLevel);
+	return lane;
 }
 
 // 找到lanes中优先级最高的lane
@@ -31,4 +48,38 @@ export function getHighestPriorityLane(lanes: Lanes): Lane {
 // 从root.pendingLanes中移除lane
 export function markRootFinished(root: FiberRootNode, lane: Lane) {
 	root.pendingLanes &= ~lane;
+}
+
+// lane转调度器优先级
+export function lanesToSchedulerPriority(lanes: Lanes) {
+	const lane = getHighestPriorityLane(lanes);
+	if (lane === SyncLane) {
+		// 优先级最高
+		return unstable_ImmediatePriority;
+	}
+
+	if (lane === InputContinuousLane) {
+		// 连续输入
+		return unstable_UserBlockingPriority;
+	}
+
+	if (lane === DefaultLane) {
+		return unstable_NormalPriority;
+	}
+
+	return unstable_IdlePriority;
+}
+
+// 调度器优先级转换为lane
+export function schedulerPriorityToLane(schedulerPriority: number): Lane {
+	if (schedulerPriority === unstable_ImmediatePriority) {
+		return SyncLane;
+	}
+	if (schedulerPriority === unstable_UserBlockingPriority) {
+		return InputContinuousLane;
+	}
+	if (schedulerPriority === unstable_NormalPriority) {
+		return DefaultLane;
+	}
+	return NoLane;
 }

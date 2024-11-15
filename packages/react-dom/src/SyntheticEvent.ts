@@ -1,4 +1,10 @@
 import { Props } from '@mini-react/shared';
+import {
+	unstable_ImmediatePriority,
+	unstable_NormalPriority,
+	unstable_runWithPriority,
+	unstable_UserBlockingPriority
+} from 'scheduler';
 import { Container } from './hostConfig';
 
 export const elementPropsKey = '__props';
@@ -80,7 +86,12 @@ function triggerEventFlow(path: EventCallback[], se: SyntheticEvent) {
 	for (let i = 0; i < path.length; i++) {
 		const eventCallback = path[i];
 		// 触发事件
-		eventCallback.call(null, se);
+		// unstable_runWithPriority 的作用很简单, 就是将当前优先级设置到其作用域中的全局变量currentPriorityLevel中
+		// 然后执行回调函数(在执行回调函数的上下文中, 可以通过 unstable_getCurrentPriorityLevel 获取当前正在处理的优先级)
+		// 回调执行后, 在将优先级恢复为调用当前runWithPriority之前的优先级
+		unstable_runWithPriority(eventTypeToSchedulerPriority(se.type), () => {
+			eventCallback.call(null, se);
+		});
 		if (se.__stopPropagation) {
 			// 这里如果是阻止冒泡, 则需要阻止事件继续传递
 			break;
@@ -144,4 +155,20 @@ function collectPaths(
 		targetElement = targetElement.parentNode as DOMElement;
 	}
 	return paths;
+}
+
+// 根据不同的交互了类型设置不同的调度优先级
+// ? 如果存在更多的情况, 直接调整即可
+function eventTypeToSchedulerPriority(eventType: string) {
+	switch (eventType) {
+		case 'click':
+		case 'keydown':
+		case 'keyup':
+			// 对于这样的输入事件, 我们认为是优先级最高的, 直接返回调度器的同步优先级
+			return unstable_ImmediatePriority;
+		case 'scroll':
+			return unstable_UserBlockingPriority;
+		default:
+			return unstable_NormalPriority;
+	}
 }
