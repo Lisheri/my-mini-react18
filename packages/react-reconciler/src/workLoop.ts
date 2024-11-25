@@ -126,7 +126,7 @@ function ensureRootInScheduled(root: FiberRootNode) {
 		}
 		// 调度的任务其实就是 renderRoot
 		// 将同步阶段的调度函数加入队列
-		scheduleSyncCallback(performSyncWorkOnRoot.bind(null, root, updateLane));
+		scheduleSyncCallback(performSyncWorkOnRoot.bind(null, root));
 		// 触发调度
 		scheduleMicroTask(flushSyncCallbacks);
 	} else {

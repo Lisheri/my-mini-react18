@@ -2,7 +2,7 @@
 
 import { Action } from '@mini-react/shared';
 import type { Dispatch } from 'react/src/currentDispatcher';
-import { Lane } from './fiberLanes';
+import { Lane, isSubsetOfLanes } from './fiberLanes';
 
 // Update数据结构
 export interface Update<State> {
@@ -77,10 +77,16 @@ export const processUpdateQueue = <State>(
 	baseState: State,
 	pendingUpdate: Update<State> | null,
 	renderLane: Lane
-): { memoizedState: State } => {
+): {
+	memoizedState: State;
+	baseState: State;
+	baseQueue: Update<State> | null;
+} => {
 	const result: ReturnType<typeof processUpdateQueue<State>> = {
 		// 更新完成的状态, fiber也需要
-		memoizedState: baseState
+		memoizedState: baseState,
+		baseState,
+		baseQueue: null
 	};
 
 	// 引入lane之后
@@ -94,10 +100,20 @@ export const processUpdateQueue = <State>(
 		// pendingUpdate指向的是环状链表最后一个节点, 因此他的next, 就是头节点
 		let first = pendingUpdate.next as Update<any>;
 		const pending = pendingUpdate.next as Update<any>;
+
+		let newBaseState = baseState; // baseState参与计算后可能会发生变化, 因此需要保存新的
+		let newBaseQueueFirst: Update<State> | null = null; // 链表头
+		let newBaseQueueLase: Update<State> | null = null; // 链表尾部
+		let newState = baseState; // 本次计算的计算结果(中间量)
+
 		do {
 			const updateLane = first.lane;
 			// 如果当前的updateLane, 和renderLane一致, 则执行计算
-			if (updateLane === renderLane) {
+			// 这里应该是判断优先级是否足够, 而不是仅判断updateLane和renderLane是否全等
+			if (!isSubsetOfLanes(renderLane, updateLane)) {
+				// 优先级不足, 被跳过
+			} else {
+				// 优先级足够
 				// 执行计算
 				// baseUpdate: 1, update: 2 -> memoizedState: 2
 				// baseUpdate: 1, update: x => 2 * x -> memoizedState: update(baseUpdate)
@@ -106,16 +122,11 @@ export const processUpdateQueue = <State>(
 				if (action instanceof Function) {
 					// action为函数, 对应第二种类型
 					// result.memoizedState = action(baseState);
-					baseState = action(baseState);
+					newState = action(baseState);
 				} else {
 					// 否则memoizedState 就是 action本身(也就是传入setState的参数)
 					// result.memoizedState = action;
-					baseState = action;
-				}
-			} else {
-				if (__DEV__) {
-					// 当前所有更新, 应该都是syncLane, 没有其他的Lane, 应该是优先级完全一致的
-					console.info('优先级不一致, 跳过更新', updateLane, renderLane);
+					newState = action;
 				}
 			}
 			// 继续处理下一个

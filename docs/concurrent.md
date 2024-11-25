@@ -286,24 +286,140 @@ Update 的优先级来自于 `RequestUpdateLanes`, 对应的位置一个函数�
 
 当前我们可以拿到的优先级信息有如下两种：
 
-1. React的Lane模型
-2. 调度器产生的5种优先级
+1. React 的 Lane 模型
+2. 调度器产生的 5 种优先级
 
-也就是说, 运行流程在React时, 使用的是Lane模型, 运行流程在Scheduler时, 使用的是优先级。
+也就是说, 运行流程在 React 时, 使用的是 Lane 模型, 运行流程在 Scheduler 时, 使用的是优先级。
 
 因此需要实现一个方法, 用于转换上述的两种优先级
 
-+ laneToSchedulerPriority
-+ schedulerPriorityToLane
+- laneToSchedulerPriority
+- schedulerPriorityToLane
 
 ## 扩展调度阶段
 
-主要是在同步更新(微任务调度)的技术侧行扩展并发更新(scheduler调度), 主要包括
-+ 将demo中的调度策略移到项目中
-+ render阶段变为「可中断」
+主要是在同步更新(微任务调度)的技术侧行扩展并发更新(scheduler 调度), 主要包括
+
+- 将 demo 中的调度策略移到项目中
+- render 阶段变为「可中断」
 
 梳理两种典型场景:
-+ 时间切片
-+ 高优先级更新打断低优先级更新
 
-## 扩展state计算机制
+- 时间切片
+- 高优先级更新打断低优先级更新
+
+## 扩展 state 计算机制
+
+扩展「根据 lane 对应 update 计算 state 的机制」, 主要包括：
+
+- 通过 update 计算 state 时可以跳过「优先级不够的 update」
+- 由于「高优先级任务打断低优先级任务」, 同一个组件中「根据 update 计算 state」的流程可能会多次执行, 所以需要保存 update
+
+### 跳过 update 需要考虑问题
+
+如何比较「优先级是否足够」?
+lane 数值大小的直接不叫不够灵活。
+如何同时兼顾『update 的连续性』与『update 的优先级』?
+
+```ts
+// 假设有如下三个update
+// u0
+{
+  action: num => num + 1,
+  lane: DefaultLane
+}
+
+// u1
+{
+  action: 31,
+  lane: SyncLane
+}
+
+// u2
+{
+  action: num => num + 10,
+  lane: DefaultLane
+}
+```
+
+对于上述三个 update
+
+只考虑优先级的情况下, 结果是: 11
+只考虑连续性的情况下, 结果是: 13
+
+### 兼顾『update 的连续性』与『update 的优先级』
+
+为了达到上述兼顾「连续性」以及「优先级」的目的, 需要新增两个字段
+
+新增 baseState, baseQueue 字段:
+
+> 同时需要遵循如下 5 个原则
+
+- baseState 是本次更新参与计算的初始 state, memoizedState 是上次更新计算的最终 state
+- 如果本次更新没有 update 被跳过, 则下次更新开始时 baseState === memoizedState
+- 如果本次更新有 update 被跳过, 则本次更新计算出 memoizedState 为「考虑优先级」情况下计算的结果, baseState 为「最后一个没被跳过的 update 计算后的结果」, 下次更新开始事 baseState !== memoizedState
+- 本次更新「被跳过的 update 及其后面的所有 update」都会被保存在 baseQueue 中参与下次 state 计算
+- 本次更新「参与计算但保存在 baseQueue 中的 update」, 优先级会降低到 NoLane
+
+以上述 demo 为例, 还是如下 3 个 update
+
+```ts
+// 假设有如下三个update
+// u0
+{
+  action: num => num + 1,
+  lane: DefaultLane
+}
+
+// u1
+{
+  action: 3,
+  lane: SyncLane
+}
+
+// u2
+{
+  action: num => num + 10,
+  lane: DefaultLane
+}
+
+/*
+  引入baseQueue后, 每一次update的来源就变成了 baseQueue与pendingUpdate合并之后的结果
+  第一次render
+  baseState = 0; memoizedState = 0;
+  baseQueue = null; updateLane = DefaultLane
+  第一次render 第一次计算
+  baseState = 1; memoizedState = 1;
+  baseQueue = null;
+  第一次render 第二次计算 (u1被跳过)
+  baseState = 1; memoizedState = 1;
+  baseQueue = u1;
+  第一次render 第三次计算
+  baseState = 1; memoizedState = 11;
+  baseQueue = u1 -> u2(NoLane)
+
+  baseState为最后一个没有被跳过的update计算的结果, 也就是u0, 因此baseState不变, 还是1
+  而u2之所以进入 baseQueue是因为「被跳过的update以及后面的所有update」都会被保存在baseQueue中, 同时参与计算但是被保存在baseQueue中的update优先级会降低到NoLane
+  而这也代表了u2一定会参与下一次优先级的计算(因为NoLane和任何其他的Lane相交的结果都是NoLane「isSubsetOfLanes(set, NoLane)一定是true」, 因此一定会参与计算)
+*/
+
+/*
+  第二次render
+  baseState = 1; memoizedState = 11;
+  baseQueue = u1 -> u2(NoLane); updateLane = SyncLane
+  第一次计算
+  baseState = 3; memoizedState = 3;(计算的是SyncLane, 因此u1一定是满足的)
+  第二次计算
+  baseState = 13; memoizedState = 13;
+*/
+```
+
+根据上述 demo, 可以知道, 是没有办法在一次计算中同时兼顾「连续性」和「优先级」的, 但是可以分多次来进行, 这样就可以兼顾这两个原则了
+
+同时每次计算都可以兼顾到优先级, 并且总体来看, 也可以兼顾连续性
+
+因此对于 react 来说, 他只能保证每一次最终的状态是符合预期的, 但是可能会产生不符合预期的中间状态
+
+这些中间状态的产生均是因为只考虑了连续性没有考虑优先级
+
+
