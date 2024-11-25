@@ -351,13 +351,13 @@ lane 数值大小的直接不叫不够灵活。
 
 为了达到上述兼顾「连续性」以及「优先级」的目的, 需要新增两个字段
 
-新增 baseState, baseQueue 字段:
+新增 `baseState`以及`baseQueue` 字段:
 
 > 同时需要遵循如下 5 个原则
 
 - baseState 是本次更新参与计算的初始 state, memoizedState 是上次更新计算的最终 state
 - 如果本次更新没有 update 被跳过, 则下次更新开始时 baseState === memoizedState
-- 如果本次更新有 update 被跳过, 则本次更新计算出 memoizedState 为「考虑优先级」情况下计算的结果, baseState 为「最后一个没被跳过的 update 计算后的结果」, 下次更新开始事 baseState !== memoizedState
+- 如果本次更新有 update 被跳过, 则本次更新计算出 memoizedState 为「考虑优先级」情况下计算的结果, baseState 为「最后一个没被跳过的 update 计算后的结果」, 下次更新开始时 baseState !== memoizedState
 - 本次更新「被跳过的 update 及其后面的所有 update」都会被保存在 baseQueue 中参与下次 state 计算
 - 本次更新「参与计算但保存在 baseQueue 中的 update」, 优先级会降低到 NoLane
 
@@ -386,6 +386,7 @@ lane 数值大小的直接不叫不够灵活。
 /*
   引入baseQueue后, 每一次update的来源就变成了 baseQueue与pendingUpdate合并之后的结果
   第一次render
+
   baseState = 0; memoizedState = 0;
   baseQueue = null; updateLane = DefaultLane
   第一次render 第一次计算
@@ -404,7 +405,8 @@ lane 数值大小的直接不叫不够灵活。
 */
 
 /*
-  第二次render
+  第二次render(没有pendingQueue, 上一次已经处理完了, 但是存在baseQueue, 需要合并处理)
+  本次更新处理的是 SyncLane
   baseState = 1; memoizedState = 11;
   baseQueue = u1 -> u2(NoLane); updateLane = SyncLane
   第一次计算
@@ -421,5 +423,3 @@ lane 数值大小的直接不叫不够灵活。
 因此对于 react 来说, 他只能保证每一次最终的状态是符合预期的, 但是可能会产生不符合预期的中间状态
 
 这些中间状态的产生均是因为只考虑了连续性没有考虑优先级
-
-
